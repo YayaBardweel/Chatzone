@@ -1,2 +1,0 @@
-# Chatzone
-app for chat 
