@@ -24,10 +24,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
     setState(() {
       _seeOnboarding = prefs.getBool('seenOnboarding') ?? false;
     });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_seeOnboarding) {
         Navigator.pushReplacementNamed(context, '/login');
-      } else {
+      } else if (ModalRoute.of(context)?.settings.name != '/onboarding') {
         Navigator.pushReplacementNamed(context, '/onboarding');
       }
     });

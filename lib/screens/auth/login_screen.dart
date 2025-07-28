@@ -1,6 +1,11 @@
+import 'package:chatzone2/screens/auth/register_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:chatzone2/services/auth_service.dart';
+
 
 import '../../widgets/PrimeColors.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,6 +15,49 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+Future<void> login() async {
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
+
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter email and password')),
+    );
+    return;
+  }
+  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter a valid email address')),
+    );
+    return;
+  }
+
+  if (password.length < 6) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Password must be at least 6 characters')),
+    );
+    return;
+  }
+
+  final user = await AuthService().signIn(email, password);
+  if (user != null) {
+    Navigator.pushReplacementNamed(context, '/home');
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login failed. Please check your credentials.')),
+    );
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,14 +67,13 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 20,
-            ),
+            SizedBox(height: 20),
 
             Center(
               child: Image.asset(
                 'assets/images/ChatZone Logo Design.png',
-                height: 250,width: 400,
+                height: 250,
+                width: 400,
               ),
             ),
             const SizedBox(height: 10),
@@ -53,16 +100,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
             // Email field
             TextField(
-style: TextStyle(color: Colors.white),
+              controller: _emailController,
+              style: TextStyle(color: Colors.white),
 
               decoration: InputDecoration(
                 fillColor: Colors.black12,
                 labelText: 'Email',
-                prefixIcon: const Icon(Icons.email,color: Colors.blue,),
+                prefixIcon: const Icon(Icons.email, color: Colors.blue),
                 labelStyle: TextStyle(color: Colors.blue),
                 filled: true,
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue,),
+                  borderSide: BorderSide(color: Colors.blue),
                   borderRadius: BorderRadius.circular(40),
                 ),
                 border: OutlineInputBorder(
@@ -75,12 +123,13 @@ style: TextStyle(color: Colors.white),
 
             // Password field
             TextField(
-style: TextStyle(color: Colors.white),
+              controller: _passwordController,
+              style: TextStyle(color: Colors.white),
               obscureText: true,
               decoration: InputDecoration(
                 fillColor: Colors.black12,
                 labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock,color: Colors.blue,),
+                prefixIcon: const Icon(Icons.lock, color: Colors.blue),
                 labelStyle: TextStyle(color: Colors.blue),
                 filled: true,
                 focusedBorder: OutlineInputBorder(
@@ -99,7 +148,8 @@ style: TextStyle(color: Colors.white),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed:(){
+                onPressed: () {
+                  login(); // Call the login function when the button is pressed
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -119,11 +169,12 @@ style: TextStyle(color: Colors.white),
             Center(
               child: GestureDetector(
                 onTap: () {
-                  // Navigator.push(
-                  //
-                  //   //  context,
-                  // //   MaterialPageRoute(
-                  // // );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ForgotPasswordScreen(),
+                    ),
+                  );
                 },
                 child: Text(
                   'Forgot password?',
@@ -133,9 +184,6 @@ style: TextStyle(color: Colors.white),
                     decoration: TextDecoration.underline,
                     decorationColor: kTextColor,
                     decorationThickness: 1.3,
-
-
-
                   ),
                 ),
               ),
@@ -158,22 +206,24 @@ style: TextStyle(color: Colors.white),
             const SizedBox(height: 16),
 
             SizedBox(
-
               width: double.infinity,
 
               child: OutlinedButton.icon(
-                onPressed: ()  {
-                },
+                onPressed: () {},
 
                 icon: const Icon(Icons.g_mobiledata_rounded, color: Colors.red),
-                label: Text('Continue with Google', style: TextStyle(color: kTextColor)),
+                label: Text(
+                  'Continue with Google',
+                  style: TextStyle(color: kTextColor),
+                ),
                 style: OutlinedButton.styleFrom(
                   // textStyle: TextStyle(color: Colors.white), // Removed as label now handles text color
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  backgroundColor: Colors.black12, // Added background color here
+                  backgroundColor:
+                      Colors.black12, // Added background color here
                 ),
               ),
             ),
@@ -183,15 +233,18 @@ style: TextStyle(color: Colors.white),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Don't have an account? ",style: TextStyle(color: Colors.blue),),
+                const Text(
+                  "Don't have an account? ",
+                  style: TextStyle(color: Colors.blue),
+                ),
                 GestureDetector(
                   onTap: () {
-                    // // Navigator.push(
-                    // //   context,
-                    // //   MaterialPageRoute(
-                    // //     builder: (context) => const RegisterPage(),
-                    //   ),
-                    // );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegasterScreen(),
+                      ),
+                    );
                   },
                   child: Text(
                     'Register Now',

@@ -13,7 +13,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue, // Example color for kprimecolor
+      backgroundColor: Colors.black12, // Example color for kprimecolor
       body: Column(children: [
         SizedBox(
           height: 200,
