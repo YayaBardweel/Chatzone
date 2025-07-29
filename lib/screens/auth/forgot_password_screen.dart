@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -8,12 +10,14 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _emailController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[850],
       appBar: // AppBar with a back button,
-          AppBar(
+      AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -32,7 +36,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Center(
               child: Image.asset(
                 'assets/images/ChatZone Logo Design.png',
-                height: 250, width: 400,
+                height: 250,
+                width: 400,
               ),
             ),
             const SizedBox(height: 10),
@@ -49,6 +54,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 24),
             // Email field
             TextField(
+              controller: _emailController,
               style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 fillColor: Colors.black12,
@@ -63,12 +69,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 16),
             // Submit button
             ElevatedButton(
-              onPressed: () {
-                // Handle password reset logic here
+              onPressed: () async {
+                final email = _emailController.text.trim();
+                if (email.isEmpty) {
+                  Fluttertoast.showToast(msg: 'Please enter your email');
+                  return;
+                }
+                try {
+                  await AuthService().resetPassword(email);
+                  Fluttertoast.showToast(msg: 'Password reset email sent!');
+                  Navigator.pop(context);
+                } catch (e) {
+                  Fluttertoast.showToast(msg: 'Failed to send reset email');
+                }
               },
               child: Center(child: Text('Reset Password')),
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.blue, // Text color
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.blue, // Text color
               ),
             ),
           ],
