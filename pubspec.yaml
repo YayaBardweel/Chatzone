@@ -1,0 +1,42 @@
+name: chatzone
+description: "A WhatsApp-like chat application built with Flutter and Firebase"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.3 <4.0.0' # Dart SDK constraint
+
+dependencies: # Add this 'dependencies' block
+  flutter:
+    sdk: flutter
+  # Firebase Core
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  # State Management
+  provider: ^6.1.1
+  # UI Components
+  cupertino_icons: ^1.0.2
+  # Navigation
+  go_router: ^12.1.3
+  # Utilities
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/sounds/
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

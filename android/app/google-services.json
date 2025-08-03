@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "748843037441",
+    "project_id": "chatzone-eb6be",
+    "storage_bucket": "chatzone-eb6be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:748843037441:android:5665ec4b5e7bcb2325a100",
+        "android_client_info": {
+          "package_name": "com.example.chatzone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz69jUGTPYDtK0yDfRWnoRHwSUcUeGVnk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
