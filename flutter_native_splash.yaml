@@ -1,0 +1,7 @@
+flutter_native_splash:
+  color: "#075E54"  # Your ChatZone primary color
+  image: assets/images/splash_logo.png
+
+  android_12:
+    image: assets/images/splash_logo.png
+    color: "#075E54"

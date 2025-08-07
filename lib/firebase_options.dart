@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'chatzone-eb6be.firebasestorage.app',
     iosBundleId: 'com.example.chatzone',
   );
+
 }
