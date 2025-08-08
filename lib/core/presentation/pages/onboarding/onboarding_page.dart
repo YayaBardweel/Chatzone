@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_sizes.dart';
 import '../../../constants/app_strings.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../routes/app_router.dart';
-import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 
 class OnboardingPage extends StatefulWidget {

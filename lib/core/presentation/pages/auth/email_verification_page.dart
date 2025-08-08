@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/presentation/pages/auth/email_verification_page.dart (NEW)
+// File: lib/core/presentation/pages/auth/email_verification_page.dart (CLEAN REBUILD)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -9,7 +9,7 @@ import 'dart:async';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_sizes.dart';
 import '../../../routes/app_router.dart';
-import '../../providers/auth_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/loading_widget.dart';
 
@@ -22,13 +22,20 @@ class EmailVerificationPage extends StatefulWidget {
 
 class _EmailVerificationPageState extends State<EmailVerificationPage>
     with TickerProviderStateMixin {
+  // ============================================================================
+  // ANIMATIONS
+  // ============================================================================
+
   late AnimationController _animationController;
   late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _pulseAnimation;
 
-  Timer? _checkTimer;
+  // ============================================================================
+  // STATE VARIABLES
+  // ============================================================================
+
   bool _isResendingEmail = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
@@ -37,8 +44,18 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   void initState() {
     super.initState();
     _setupAnimations();
-    _startVerificationCheck();
     _animationController.forward();
+
+    // Start checking email verification automatically
+    _startPeriodicCheck();
+  }
+
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    _animationController.dispose();
+    _pulseController.dispose();
+    super.dispose();
   }
 
   void _setupAnimations() {
@@ -79,31 +96,35 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
     _pulseController.repeat(reverse: true);
   }
 
-  void _startVerificationCheck() {
-    print('🔄 DEBUG: Email Verification UI - Starting verification check');
+  // ============================================================================
+  // EMAIL VERIFICATION LOGIC
+  // ============================================================================
 
-    // Check every 8 seconds if email is verified (reduced frequency)
-    _checkTimer = Timer.periodic(const Duration(seconds: 8), (timer) async {
-      try {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  /// Start periodic checking for email verification
+  void _startPeriodicCheck() {
+    print('🔄 EmailVerificationPage: Starting periodic verification check');
 
-        print('🔍 DEBUG: Email Verification UI - Periodic check...');
-        bool isVerified = await authProvider.checkEmailVerification();
-
-        if (isVerified) {
-          print('✅ DEBUG: Email Verification UI - Email verified! Stopping timer');
-          timer.cancel();
-          _showSuccessAndNavigate();
-        } else {
-          print('⏳ DEBUG: Email Verification UI - Still not verified');
-        }
-      } catch (e) {
-        print('❌ DEBUG: Email Verification UI - Check failed: $e');
-        // Continue checking despite errors
-      }
-    });
+    // Check immediately when page loads
+    _checkEmailVerificationStatus();
   }
 
+  /// Check email verification status
+  void _checkEmailVerificationStatus() async {
+    final authProvider = context.read<AuthProvider>();
+
+    print('🔍 EmailVerificationPage: Checking verification status...');
+
+    final isVerified = await authProvider.checkEmailVerification();
+
+    if (isVerified && mounted) {
+      print('✅ EmailVerificationPage: Email verified! Navigating to home');
+      _showSuccessAndNavigate();
+    } else {
+      print('⏳ EmailVerificationPage: Still not verified');
+    }
+  }
+
+  /// Show success message and navigate to home
   void _showSuccessAndNavigate() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -122,7 +143,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
       ),
     );
 
-    // Navigate to home or profile setup
+    // Navigate to home after short delay
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         AppRouter.goToHome(context);
@@ -130,14 +151,19 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
     });
   }
 
+  // ============================================================================
+  // RESEND EMAIL LOGIC
+  // ============================================================================
+
+  /// Resend verification email
   void _resendVerificationEmail() async {
-    if (_resendCooldown > 0) return;
+    if (_resendCooldown > 0 || _isResendingEmail) return;
 
     setState(() {
       _isResendingEmail = true;
     });
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = context.read<AuthProvider>();
     final success = await authProvider.sendEmailVerification();
 
     setState(() {
@@ -146,27 +172,13 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
 
     if (success) {
       _startResendCooldown();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.email, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Verification email sent!'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusM),
-          ),
-        ),
-      );
+      _showSuccessMessage('Verification email sent!');
     } else {
-      _showError(authProvider.errorMessage ?? 'Failed to resend email');
+      _showErrorMessage(authProvider.error ?? 'Failed to resend email');
     }
   }
 
+  /// Start cooldown timer for resend button
   void _startResendCooldown() {
     setState(() {
       _resendCooldown = 60; // 60 seconds cooldown
@@ -183,25 +195,33 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
     });
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSizes.radiusM),
-        ),
-      ),
-    );
+  // ============================================================================
+  // MANUAL VERIFICATION CHECK
+  // ============================================================================
+
+  /// Manual check when user clicks "I've Verified My Email"
+  void _manualVerificationCheck() async {
+    print('🔍 EmailVerificationPage: Manual verification check');
+
+    final authProvider = context.read<AuthProvider>();
+
+    // Show loading state briefly
+    _showLoadingMessage('Checking verification status...');
+
+    final isVerified = await authProvider.checkEmailVerification();
+
+    if (isVerified && mounted) {
+      _showSuccessAndNavigate();
+    } else if (mounted) {
+      _showErrorMessage('Email not verified yet. Please check your email and click the verification link.');
+    }
   }
 
+  // ============================================================================
+  // NAVIGATION
+  // ============================================================================
+
+  /// Change email address (go back to signup)
   void _changeEmail() {
     showDialog(
       context: context,
@@ -227,22 +247,87 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
     );
   }
 
+  /// Sign out and go to login
   void _signOut() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = context.read<AuthProvider>();
     await authProvider.signOut();
     if (mounted) {
       AppRouter.goToLogin(context);
     }
   }
 
-  @override
-  void dispose() {
-    _checkTimer?.cancel();
-    _cooldownTimer?.cancel();
-    _animationController.dispose();
-    _pulseController.dispose();
-    super.dispose();
+  // ============================================================================
+  // UI HELPERS
+  // ============================================================================
+
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        ),
+      ),
+    );
   }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        ),
+      ),
+    );
+  }
+
+  void _showLoadingMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(message),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // ============================================================================
+  // BUILD METHODS
+  // ============================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -281,28 +366,14 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(height: 40),
-
-                          // Header with animated icon
                           _buildHeader(authProvider),
-
                           const SizedBox(height: 40),
-
-                          // Email info
                           _buildEmailInfo(authProvider),
-
                           const SizedBox(height: 40),
-
-                          // Instructions
                           _buildInstructions(),
-
                           const SizedBox(height: 40),
-
-                          // Action buttons
                           _buildActionButtons(),
-
                           const SizedBox(height: 30),
-
-                          // Help text
                           _buildHelpText(),
                         ],
                       ),
@@ -389,7 +460,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
           const SizedBox(height: 8),
 
           Text(
-            authProvider.currentUserEmail ?? 'your-email@example.com',
+            authProvider.userEmail ?? 'your-email@example.com',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -484,7 +555,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
               : _resendCooldown > 0
               ? 'Resend in ${_resendCooldown}s'
               : 'Resend Verification Email',
-          onPressed: _resendCooldown > 0 || _isResendingEmail ? null : _resendVerificationEmail,
+          onPressed: _resendCooldown > 0 || _isResendingEmail
+              ? null
+              : _resendVerificationEmail,
           type: ButtonType.outline,
           size: ButtonSize.medium,
           icon: _isResendingEmail ? null : Icons.refresh_rounded,
@@ -496,19 +569,21 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
         // Manual check button
         CustomButton(
           text: 'I\'ve Verified My Email',
-          onPressed: () async {
-            final authProvider = Provider.of<AuthProvider>(context, listen: false);
-            final isVerified = await authProvider.checkEmailVerification();
-
-            if (isVerified) {
-              _showSuccessAndNavigate();
-            } else {
-              _showError('Email not verified yet. Please check your email and click the verification link.');
-            }
-          },
+          onPressed: _manualVerificationCheck,
           type: ButtonType.primary,
           size: ButtonSize.medium,
           icon: Icons.verified_rounded,
+        ),
+
+        const SizedBox(height: 16),
+
+        // Refresh button
+        CustomButton(
+          text: 'Check Again',
+          onPressed: _checkEmailVerificationStatus,
+          type: ButtonType.text,
+          size: ButtonSize.medium,
+          icon: Icons.refresh,
         ),
       ],
     );

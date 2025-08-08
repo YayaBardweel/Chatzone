@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_strings.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../routes/app_router.dart';
-import '../../providers/auth_provider.dart';
+
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});

@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/presentation/pages/auth/forgot_password_page.dart (NEW)
+// File: lib/core/presentation/pages/auth/forgot_password_page.dart (CLEAN REBUILD)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -9,7 +9,7 @@ import '../../../constants/app_colors.dart';
 import '../../../constants/app_sizes.dart';
 import '../../../routes/app_router.dart';
 import '../../../utils/validators.dart';
-import '../../providers/auth_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -28,9 +28,17 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     with SingleTickerProviderStateMixin {
+  // ============================================================================
+  // CONTROLLERS & FOCUS NODES
+  // ============================================================================
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _emailFocusNode = FocusNode();
+
+  // ============================================================================
+  // ANIMATIONS & STATE
+  // ============================================================================
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -49,6 +57,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
 
     _setupAnimations();
     _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _emailFocusNode.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _setupAnimations() {
@@ -74,39 +90,61 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     ));
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _emailFocusNode.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
+  // ============================================================================
+  // PASSWORD RESET LOGIC
+  // ============================================================================
 
+  /// Send password reset email
   void _sendPasswordReset() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Clear any existing errors
+    context.read<AuthProvider>().clearError();
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // Validate form
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    final success = await authProvider.sendPasswordResetEmail(
+    print('🔥 ForgotPasswordPage: Sending password reset email');
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.sendPasswordReset(
       _emailController.text.trim(),
     );
 
+    if (!mounted) return;
+
     if (success) {
+      print('✅ ForgotPasswordPage: Password reset email sent');
       setState(() {
         _emailSent = true;
       });
-
-      _showSuccess('Password reset email sent to ${_emailController.text.trim()}');
-    } else if (mounted) {
-      _showError(authProvider.errorMessage ?? 'Failed to send reset email');
+      _showSuccessMessage('Password reset email sent to ${_emailController.text.trim()}');
+    } else {
+      print('❌ ForgotPasswordPage: Failed to send password reset email');
+      _showErrorMessage(authProvider.error ?? 'Failed to send reset email');
     }
   }
 
+  // ============================================================================
+  // NAVIGATION
+  // ============================================================================
+
   void _goBackToLogin() {
+    print('🔗 ForgotPasswordPage: Going back to login');
     AppRouter.goToLogin(context);
   }
 
-  void _showSuccess(String message) {
+  void _tryAgain() {
+    setState(() {
+      _emailSent = false;
+    });
+  }
+
+  // ============================================================================
+  // UI HELPERS
+  // ============================================================================
+
+  void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -125,7 +163,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     );
   }
 
-  void _showError(String message) {
+  void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -144,6 +182,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     );
   }
 
+  // ============================================================================
+  // BUILD METHODS
+  // ============================================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,6 +200,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
       ),
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
+          // Show loading overlay
           if (authProvider.isLoading) {
             return const Center(
               child: LoadingWidget(
@@ -196,23 +239,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
-
-        // Header
         _buildHeader(),
-
         const SizedBox(height: 40),
-
-        // Reset form
         _buildForm(),
-
         const SizedBox(height: 30),
-
-        // Send reset button
         _buildSendResetButton(),
-
         const SizedBox(height: 30),
-
-        // Back to login
         _buildBackToLoginButton(),
       ],
     );
@@ -256,7 +288,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         const SizedBox(height: 16),
 
         // Description
-        Text(
+        const Text(
           'We sent a password reset link to:',
           style: TextStyle(
             fontSize: 16,
@@ -340,12 +372,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         Column(
           children: [
             CustomButton(
-              text: 'Resend Reset Email',
-              onPressed: () {
-                setState(() {
-                  _emailSent = false;
-                });
-              },
+              text: 'Send Another Email',
+              onPressed: _tryAgain,
               type: ButtonType.outline,
               size: ButtonSize.medium,
               icon: Icons.refresh_rounded,
@@ -361,6 +389,51 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               icon: Icons.arrow_back_rounded,
             ),
           ],
+        ),
+
+        const SizedBox(height: 30),
+
+        // Help text
+        Container(
+          padding: const EdgeInsets.all(AppSizes.paddingM),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(AppSizes.radiusM),
+            border: Border.all(color: Colors.orange.shade200),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.help_outline,
+                    color: Colors.orange.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Didn\'t receive the email?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Check your spam/junk folder. The email may take a few minutes to arrive.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.orange.shade700,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -439,7 +512,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
         const SizedBox(height: 8),
 
         // Description
-        Text(
+        const Text(
           'No worries! Enter your email and we\'ll send you a reset link.',
           style: TextStyle(
             fontSize: 16,
@@ -475,7 +548,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             validator: Validators.validateEmail,
             prefixIcon: const Icon(Icons.email_outlined),
             onChanged: (value) {
-              Provider.of<AuthProvider>(context, listen: false).clearError();
+              context.read<AuthProvider>().clearError();
             },
           ),
         ],

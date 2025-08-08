@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/presentation/pages/auth/login_page.dart (UPDATED FOR EMAIL)
+// File: lib/core/presentation/pages/auth/login_page.dart (CLEAN REBUILD)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -10,7 +10,7 @@ import '../../../constants/app_sizes.dart';
 import '../../../constants/app_strings.dart';
 import '../../../routes/app_router.dart';
 import '../../../utils/validators.dart';
-import '../../providers/auth_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -22,13 +22,20 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage>
-    with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+  // ============================================================================
+  // CONTROLLERS & FOCUS NODES
+  // ============================================================================
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
+
+  // ============================================================================
+  // ANIMATIONS
+  // ============================================================================
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -41,6 +48,16 @@ class _LoginPageState extends State<LoginPage>
     super.initState();
     _setupAnimations();
     _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _setupAnimations() {
@@ -66,48 +83,72 @@ class _LoginPageState extends State<LoginPage>
     ));
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _emailFocusNode.dispose();
-    _passwordFocusNode.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
+  // ============================================================================
+  // AUTHENTICATION ACTIONS
+  // ============================================================================
 
+  /// Handle sign in
   void _signIn() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Clear any existing errors
+    context.read<AuthProvider>().clearError();
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // Validate form
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    final success = await authProvider.signUpWithEmail(
+    print('🔥 LoginPage: Starting sign in process');
+
+    // Attempt sign in
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.signIn(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
-    if (success && mounted) {
-      // Check if email is verified
-      if (authProvider.isEmailVerified) {
-        // Email is verified, go to home
-        AppRouter.goToHome(context);
-      } else {
-        // Email not verified, go to verification page
-        AppRouter.goToEmailVerification(context);
-      }
-    } else if (mounted) {
-      // Show error
-      _showError(authProvider.errorMessage ?? 'Sign in failed');
+    if (!mounted) return;
+
+    if (success) {
+      print('✅ LoginPage: Sign in successful');
+      _navigateAfterSignIn();
+    } else {
+      print('❌ LoginPage: Sign in failed');
+      _showError(authProvider.error ?? 'Sign in failed');
     }
   }
 
+  /// Navigate after successful sign in
+  void _navigateAfterSignIn() {
+    final authProvider = context.read<AuthProvider>();
+
+    if (authProvider.isEmailVerified) {
+      // Email verified - go to home
+      print('🏠 LoginPage: Email verified, going to home');
+      AppRouter.goToHome(context);
+    } else {
+      // Email not verified - go to verification
+      print('📧 LoginPage: Email not verified, going to verification');
+      AppRouter.goToEmailVerification(context);
+    }
+  }
+
+  // ============================================================================
+  // NAVIGATION
+  // ============================================================================
+
   void _goToSignUp() {
+    print('🔗 LoginPage: Going to sign up');
     AppRouter.goToSignUp(context);
   }
 
   void _goToForgotPassword() {
+    print('🔗 LoginPage: Going to forgot password');
     AppRouter.goToForgotPassword(context, _emailController.text.trim());
   }
+
+  // ============================================================================
+  // UI HELPERS
+  // ============================================================================
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -128,6 +169,10 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
+  // ============================================================================
+  // BUILD METHODS
+  // ============================================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,6 +180,7 @@ class _LoginPageState extends State<LoginPage>
       body: SafeArea(
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, _) {
+            // Show loading overlay
             if (authProvider.isLoading) {
               return const Center(
                 child: LoadingWidget(
@@ -157,33 +203,16 @@ class _LoginPageState extends State<LoginPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 40),
-
-                          // Header section
                           _buildHeader(),
-
                           const SizedBox(height: 50),
-
-                          // Login form
                           _buildLoginForm(),
-
                           const SizedBox(height: 30),
-
-                          // Sign in button
                           _buildSignInButton(),
-
                           const SizedBox(height: 20),
-
-                          // Forgot password
                           _buildForgotPasswordButton(),
-
                           const SizedBox(height: 40),
-
-                          // Sign up link
                           _buildSignUpLink(),
-
                           const SizedBox(height: 30),
-
-                          // Terms and privacy
                           _buildTermsText(),
                         ],
                       ),
@@ -290,14 +319,12 @@ class _LoginPageState extends State<LoginPage>
             validator: Validators.validateEmail,
             prefixIcon: const Icon(Icons.email_outlined),
             onChanged: (value) {
-              // Clear error when user starts typing
-              if (value.isNotEmpty) {
-                Provider.of<AuthProvider>(context, listen: false).clearError();
-              }
+              // Clear errors when user types
+              context.read<AuthProvider>().clearError();
             },
             onTap: () {
-              // Clear any existing errors
-              Provider.of<AuthProvider>(context, listen: false).clearError();
+              // Clear errors when field is tapped
+              context.read<AuthProvider>().clearError();
             },
           ),
 
@@ -338,10 +365,8 @@ class _LoginPageState extends State<LoginPage>
               },
             ),
             onChanged: (value) {
-              // Clear error when user starts typing
-              if (value.isNotEmpty) {
-                Provider.of<AuthProvider>(context, listen: false).clearError();
-              }
+              // Clear errors when user types
+              context.read<AuthProvider>().clearError();
             },
           ),
         ],

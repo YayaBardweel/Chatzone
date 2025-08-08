@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/presentation/pages/auth/signup_page.dart (NEW)
+// File: lib/core/presentation/pages/auth/signup_page.dart (CLEAN REBUILD)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -10,7 +10,7 @@ import '../../../constants/app_sizes.dart';
 import '../../../constants/app_strings.dart';
 import '../../../routes/app_router.dart';
 import '../../../utils/validators.dart';
-import '../../providers/auth_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -24,13 +24,23 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage>
     with SingleTickerProviderStateMixin {
+  // ============================================================================
+  // CONTROLLERS & FOCUS NODES
+  // ============================================================================
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _confirmPasswordFocusNode = FocusNode();
+  final _displayNameFocusNode = FocusNode();
+
+  // ============================================================================
+  // ANIMATIONS & STATE
+  // ============================================================================
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -45,6 +55,20 @@ class _SignUpPageState extends State<SignUpPage>
     super.initState();
     _setupAnimations();
     _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _displayNameController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
+    _displayNameFocusNode.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _setupAnimations() {
@@ -70,61 +94,80 @@ class _SignUpPageState extends State<SignUpPage>
     ));
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _emailFocusNode.dispose();
-    _passwordFocusNode.dispose();
-    _confirmPasswordFocusNode.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
+  // ============================================================================
+  // AUTHENTICATION ACTIONS
+  // ============================================================================
 
+  /// Handle sign up
   void _signUp() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Clear any existing errors
+    context.read<AuthProvider>().clearError();
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    // Validate form
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    print('🔥 DEBUG: UI - Starting signup process');
+    print('🔥 SignUpPage: Starting sign up process');
 
-    final success = await authProvider.signUpWithEmail(
+    // Attempt sign up
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
+      displayName: _displayNameController.text.trim().isNotEmpty
+          ? _displayNameController.text.trim()
+          : null,
     );
 
-    print('🔍 DEBUG: UI - Signup success: $success');
-    print('🔍 DEBUG: UI - Is authenticated: ${authProvider.isAuthenticated}');
+    if (!mounted) return;
 
-    if (success && mounted) {
-      print('✅ DEBUG: UI - Signup successful, navigating to email verification');
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Account created! Please verify your email.'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      // Navigate to email verification
-      AppRouter.goToEmailVerification(context);
-    } else if (mounted) {
-      print('❌ DEBUG: UI - Signup failed: ${authProvider.errorMessage}');
-      _showError(authProvider.errorMessage ?? 'Sign up failed');
+    if (success) {
+      print('✅ SignUpPage: Sign up successful');
+      _showSuccessMessage();
+      _navigateToEmailVerification();
+    } else {
+      print('❌ SignUpPage: Sign up failed');
+      _showError(authProvider.error ?? 'Account creation failed');
     }
   }
 
+  /// Navigate to email verification
+  void _navigateToEmailVerification() {
+    print('📧 SignUpPage: Going to email verification');
+    AppRouter.goToEmailVerification(context);
+  }
+
+  // ============================================================================
+  // NAVIGATION
+  // ============================================================================
+
   void _goToSignIn() {
+    print('🔗 SignUpPage: Going to sign in');
     AppRouter.goToLogin(context);
+  }
+
+  // ============================================================================
+  // UI HELPERS
+  // ============================================================================
+
+  void _showSuccessMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Account created! Please verify your email.'),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        ),
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -146,6 +189,10 @@ class _SignUpPageState extends State<SignUpPage>
     );
   }
 
+  // ============================================================================
+  // BUILD METHODS
+  // ============================================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,12 +201,14 @@ class _SignUpPageState extends State<SignUpPage>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_ios_rounded,
+              color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
       ),
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
+          // Show loading overlay
           if (authProvider.isLoading) {
             return const Center(
               child: LoadingWidget(
@@ -183,28 +232,14 @@ class _SignUpPageState extends State<SignUpPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 20),
-
-                          // Header section
                           _buildHeader(),
-
                           const SizedBox(height: 40),
-
-                          // Sign up form
                           _buildSignUpForm(),
-
                           const SizedBox(height: 30),
-
-                          // Create account button
                           _buildCreateAccountButton(),
-
                           const SizedBox(height: 30),
-
-                          // Sign in link
                           _buildSignInLink(),
-
                           const SizedBox(height: 30),
-
-                          // Terms and privacy
                           _buildTermsText(),
                         ],
                       ),
@@ -292,6 +327,36 @@ class _SignUpPageState extends State<SignUpPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Display Name field (optional)
+          const Text(
+            'Display Name (Optional)',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          CustomTextField(
+            controller: _displayNameController,
+            focusNode: _displayNameFocusNode,
+            hintText: 'Enter your display name',
+            validator: (value) {
+              // Optional field - only validate if not empty
+              if (value != null && value.trim().isNotEmpty) {
+                return Validators.validateDisplayName(value);
+              }
+              return null;
+            },
+            prefixIcon: const Icon(Icons.person_outline),
+            onChanged: (value) {
+              context.read<AuthProvider>().clearError();
+            },
+          ),
+
+          const SizedBox(height: 20),
+
           // Email field
           const Text(
             'Email Address',
@@ -311,7 +376,7 @@ class _SignUpPageState extends State<SignUpPage>
             validator: Validators.validateEmail,
             prefixIcon: const Icon(Icons.email_outlined),
             onChanged: (value) {
-              Provider.of<AuthProvider>(context, listen: false).clearError();
+              context.read<AuthProvider>().clearError();
             },
           ),
 
@@ -350,7 +415,7 @@ class _SignUpPageState extends State<SignUpPage>
               setState(() {
                 _passwordStrength = Validators.getPasswordStrength(value);
               });
-              Provider.of<AuthProvider>(context, listen: false).clearError();
+              context.read<AuthProvider>().clearError();
             },
           ),
 
@@ -385,7 +450,9 @@ class _SignUpPageState extends State<SignUpPage>
             prefixIcon: const Icon(Icons.lock_outline),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                _obscureConfirmPassword
+                    ? Icons.visibility_off
+                    : Icons.visibility,
                 color: Colors.grey.shade600,
               ),
               onPressed: () {
@@ -395,7 +462,7 @@ class _SignUpPageState extends State<SignUpPage>
               },
             ),
             onChanged: (value) {
-              Provider.of<AuthProvider>(context, listen: false).clearError();
+              context.read<AuthProvider>().clearError();
             },
           ),
         ],
@@ -421,7 +488,8 @@ class _SignUpPageState extends State<SignUpPage>
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(Validators.getPasswordStrengthColor(_passwordStrength)),
+                color: Color(
+                    Validators.getPasswordStrengthColor(_passwordStrength)),
               ),
             ),
           ],
@@ -437,7 +505,8 @@ class _SignUpPageState extends State<SignUpPage>
                 margin: EdgeInsets.only(right: index < 3 ? 4 : 0),
                 decoration: BoxDecoration(
                   color: index < _passwordStrength
-                      ? Color(Validators.getPasswordStrengthColor(_passwordStrength))
+                      ? Color(Validators.getPasswordStrengthColor(
+                          _passwordStrength))
                       : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
                 ),
