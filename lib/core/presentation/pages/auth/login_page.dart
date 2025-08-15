@@ -22,7 +22,8 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   // ============================================================================
   // CONTROLLERS & FOCUS NODES
   // ============================================================================
@@ -388,7 +389,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     return Center(
       child: TextButton(
         onPressed: _goToForgotPassword,
-        child: Text(
+        child: const Text(
           'Forgot Password?',
           style: TextStyle(
             color: AppColors.primary,
@@ -428,7 +429,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             ),
             GestureDetector(
               onTap: _goToSignUp,
-              child: Text(
+              child: const Text(
                 'Create Account',
                 style: TextStyle(
                   fontSize: 14,
@@ -446,14 +447,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   Widget _buildTermsText() {
     return RichText(
       textAlign: TextAlign.center,
-      text: TextSpan(
-        style: const TextStyle(
+      text: const TextSpan(
+        style: TextStyle(
           fontSize: 14,
           color: AppColors.textSecondary,
           height: 1.5,
         ),
         children: [
-          const TextSpan(
+          TextSpan(
             text: 'By signing in, you agree to our ',
           ),
           TextSpan(
@@ -463,7 +464,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               fontWeight: FontWeight.w600,
             ),
           ),
-          const TextSpan(text: ' and '),
+          TextSpan(text: ' and '),
           TextSpan(
             text: 'Privacy Policy',
             style: TextStyle(
@@ -471,7 +472,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               fontWeight: FontWeight.w600,
             ),
           ),
-          const TextSpan(text: '.'),
+          TextSpan(text: '.'),
         ],
       ),
     );

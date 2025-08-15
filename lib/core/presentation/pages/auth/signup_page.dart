@@ -556,7 +556,7 @@ class _SignUpPageState extends State<SignUpPage>
             ),
             GestureDetector(
               onTap: _goToSignIn,
-              child: Text(
+              child: const Text(
                 'Sign In',
                 style: TextStyle(
                   fontSize: 14,
@@ -574,14 +574,14 @@ class _SignUpPageState extends State<SignUpPage>
   Widget _buildTermsText() {
     return RichText(
       textAlign: TextAlign.center,
-      text: TextSpan(
-        style: const TextStyle(
+      text: const TextSpan(
+        style: TextStyle(
           fontSize: 14,
           color: AppColors.textSecondary,
           height: 1.5,
         ),
         children: [
-          const TextSpan(
+          TextSpan(
             text: 'By creating an account, you agree to our ',
           ),
           TextSpan(
@@ -591,7 +591,7 @@ class _SignUpPageState extends State<SignUpPage>
               fontWeight: FontWeight.w600,
             ),
           ),
-          const TextSpan(text: ' and '),
+          TextSpan(text: ' and '),
           TextSpan(
             text: 'Privacy Policy',
             style: TextStyle(
@@ -599,7 +599,7 @@ class _SignUpPageState extends State<SignUpPage>
               fontWeight: FontWeight.w600,
             ),
           ),
-          const TextSpan(text: '.'),
+          TextSpan(text: '.'),
         ],
       ),
     );

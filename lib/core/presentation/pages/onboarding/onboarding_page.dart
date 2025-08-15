@@ -299,7 +299,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                     ),
                     child: Text(
                       description,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 17,
                         color: AppColors.textSecondary,
                         height: 1.6,

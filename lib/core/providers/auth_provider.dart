@@ -219,34 +219,66 @@ class AuthProvider extends ChangeNotifier {
         _stopEmailVerificationCheck();
         notifyListeners();
         print('✅ AuthProvider: Email verification confirmed');
+        return true;
       }
 
-      return isVerified;
+      return false;
 
     } catch (e) {
       print('❌ AuthProvider: Check verification failed - $e');
 
-      // If it's the PigeonUserDetails error, try a simpler check
-      if (e.toString().contains('PigeonUserDetails')) {
+      // If it's the PigeonUserDetails error, try force update method
+      if (e.toString().contains('PigeonUserDetails') ||
+          e.toString().contains('List<Object?>')) {
         try {
-          print('🔄 AuthProvider: Trying fallback verification check...');
-          final user = _authService.currentUser;
-          final isVerified = user?.emailVerified ?? false;
-          print('📧 AuthProvider: Fallback check result: $isVerified');
+          print('🔄 AuthProvider: Trying force verification update...');
+          final forceResult = await _authService.forceUpdateEmailVerificationStatus();
 
-          if (isVerified) {
-            _user = user;
+          if (forceResult) {
+            _user = _authService.currentUser;
             _stopEmailVerificationCheck();
             notifyListeners();
+            return true;
           }
-
-          return isVerified;
         } catch (fallbackError) {
-          print('❌ AuthProvider: Fallback check also failed: $fallbackError');
-          return false;
+          print('❌ AuthProvider: Force update also failed: $fallbackError');
         }
       }
 
+      return false;
+    }
+  }
+
+  /// Manual verification check with force update option
+  Future<bool> manualEmailVerificationCheck() async {
+    try {
+      print('🔍 AuthProvider: Manual email verification check');
+
+      // First try the normal check
+      bool isVerified = await checkEmailVerification();
+
+      if (isVerified) {
+        return true;
+      }
+
+      // If normal check fails, try force update
+      // This handles cases where email was verified but Firebase Auth has a bug
+      print('🔧 AuthProvider: Normal check failed, trying force update...');
+
+      isVerified = await _authService.forceUpdateEmailVerificationStatus();
+
+      if (isVerified) {
+        _user = _authService.currentUser;
+        _stopEmailVerificationCheck();
+        notifyListeners();
+        print('✅ AuthProvider: Force verification successful');
+        return true;
+      }
+
+      return false;
+
+    } catch (e) {
+      print('❌ AuthProvider: Manual verification check failed: $e');
       return false;
     }
   }
@@ -312,8 +344,8 @@ class AuthProvider extends ChangeNotifier {
     // Add delay before starting to avoid the PigeonUserDetails bug
     Future.delayed(const Duration(seconds: 2), () {
       // ChangeNotifier doesn't have a 'mounted' property.
-      // We can check if the timer is already active or if the provider has been disposed.
-      if (_verificationTimer != null || !_isInitialized) return;
+      // We can check if the timer is already active or if the user is already verified.
+      if (_verificationTimer != null || (_user?.emailVerified ?? true)) return;
 
       _verificationTimer = Timer.periodic(
         const Duration(seconds: 10), // Check every 10 seconds

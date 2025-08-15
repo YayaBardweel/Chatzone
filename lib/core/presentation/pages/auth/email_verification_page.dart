@@ -110,17 +110,26 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
 
   /// Check email verification status
   void _checkEmailVerificationStatus() async {
-    final authProvider = context.read<AuthProvider>();
+    try {
+      print('🔍 EmailVerificationPage: Checking verification status...');
 
-    print('🔍 EmailVerificationPage: Checking verification status...');
+      // Add delay to avoid PigeonUserDetails error
+      await Future.delayed(const Duration(milliseconds: 500));
 
-    final isVerified = await authProvider.checkEmailVerification();
+      final authProvider = context.read<AuthProvider>();
+      final isVerified = await authProvider.checkEmailVerification();
 
-    if (isVerified && mounted) {
-      print('✅ EmailVerificationPage: Email verified! Navigating to home');
-      _showSuccessAndNavigate();
-    } else {
-      print('⏳ EmailVerificationPage: Still not verified');
+      if (!mounted) return;
+
+      if (isVerified) {
+        print('✅ EmailVerificationPage: Email verified! Navigating to home');
+        _showSuccessAndNavigate();
+      } else {
+        print('⏳ EmailVerificationPage: Still not verified');
+      }
+    } catch (e) {
+      print('❌ EmailVerificationPage: Check failed (non-critical): $e');
+      // Don't show error to user for automatic checks
     }
   }
 
@@ -203,17 +212,47 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   void _manualVerificationCheck() async {
     print('🔍 EmailVerificationPage: Manual verification check');
 
-    final authProvider = context.read<AuthProvider>();
+    try {
+      // Show loading state briefly
+      _showLoadingMessage('Checking verification status...');
 
-    // Show loading state briefly
-    _showLoadingMessage('Checking verification status...');
+      // Add small delay to avoid PigeonUserDetails error
+      await Future.delayed(const Duration(milliseconds: 1000));
 
-    final isVerified = await authProvider.checkEmailVerification();
+      final authProvider = context.read<AuthProvider>();
 
-    if (isVerified && mounted) {
-      _showSuccessAndNavigate();
-    } else if (mounted) {
-      _showErrorMessage('Email not verified yet. Please check your email and click the verification link.');
+      // Use the new manual check method that includes force update
+      final isVerified = await authProvider.manualEmailVerificationCheck();
+
+      if (!mounted) return;
+
+      if (isVerified) {
+        print('✅ EmailVerificationPage: Email verified! Navigating...');
+        _showSuccessAndNavigate();
+      } else {
+        print('❌ EmailVerificationPage: Email still not verified');
+
+        // Show different message based on verification status
+        _showDialog(
+          'Email Verification',
+          'If you clicked the verification link in your email, it may take a few minutes for the status to update. Please try again in a moment.\n\nIf you haven\'t clicked the link yet, please check your email (including spam folder) and click the verification link.',
+          [
+            {
+              'text': 'Try Again',
+              'action': () => _manualVerificationCheck(),
+            },
+            {
+              'text': 'Resend Email',
+              'action': () => _resendVerificationEmail(),
+            },
+          ],
+        );
+      }
+    } catch (e) {
+      print('❌ EmailVerificationPage: Manual check failed: $e');
+      if (mounted) {
+        _showErrorMessage('Failed to check verification status. Please try again.');
+      }
     }
   }
 
@@ -259,6 +298,25 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
   // ============================================================================
   // UI HELPERS
   // ============================================================================
+
+  void _showDialog(String title, String message, List<Map<String, dynamic>> actions) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: actions.map((action) {
+          return TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              action['action']?.call();
+            },
+            child: Text(action['text']),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
   void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(

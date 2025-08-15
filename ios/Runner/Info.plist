@@ -45,6 +45,8 @@
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
+		<key>NSContactsUsageDescription</key>
+		<string>This app needs access to contacts to help you connect with friends.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>
