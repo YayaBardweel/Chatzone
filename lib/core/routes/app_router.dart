@@ -1,9 +1,10 @@
 // ============================================================================
-// File: lib/core/routes/app_router.dart (UPDATED FOR PHASE 2)
+// File: lib/core/routes/app_router.dart (UPDATED FOR PHASE 2 IMPLEMENTATIONS)
 // ============================================================================
 
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import '../presentation/contacts/contacts_page.dart';
 import '../presentation/pages/auth/email_verification_page.dart';
 import '../presentation/pages/auth/forgot_password_page.dart';
 import '../presentation/pages/auth/login_page.dart';
@@ -11,6 +12,7 @@ import '../presentation/pages/auth/signup_page.dart';
 import '../presentation/pages/onboarding/onboarding_page.dart';
 import '../presentation/pages/splash/splash_page.dart';
 import '../presentation/pages/home/home_page.dart';
+import '../presentation/profile/profile_page.dart';
 
 class AppRouter {
   // Route paths
@@ -134,13 +136,13 @@ class AppRouter {
         },
       ),
 
-      // Profile Routes (placeholders for now)
+      // Profile Routes - NOW WITH REAL IMPLEMENTATIONS
       GoRoute(
         path: profile,
         name: 'profile',
         builder: (context, state) {
-          print('🚀 DEBUG: Navigating to Profile (placeholder)');
-          return const _ProfilePlaceholder();
+          print('🚀 DEBUG: Navigating to Profile');
+          return const ProfilePage();
         },
       ),
 
@@ -148,18 +150,19 @@ class AppRouter {
         path: editProfile,
         name: 'editProfile',
         builder: (context, state) {
-          print('🚀 DEBUG: Navigating to Edit Profile (placeholder)');
-          return const _EditProfilePlaceholder();
+          print('🚀 DEBUG: Navigating to Edit Profile (redirect to profile edit mode)');
+          // For now, redirect to profile page - it has edit functionality built in
+          return const ProfilePage();
         },
       ),
 
-      // Contact Routes (placeholders for now)
+      // Contact Routes - NOW WITH REAL IMPLEMENTATIONS
       GoRoute(
         path: contacts,
         name: 'contacts',
         builder: (context, state) {
-          print('🚀 DEBUG: Navigating to Contacts (placeholder)');
-          return const _ContactsPlaceholder();
+          print('🚀 DEBUG: Navigating to Contacts');
+          return const ContactsPage();
         },
       ),
 
@@ -265,146 +268,8 @@ class AppRouter {
 }
 
 // ============================================================================
-// PLACEHOLDER PAGES (TEMPORARY)
+// REMAINING PLACEHOLDER PAGES (TEMPORARY)
 // ============================================================================
-
-class _ProfilePlaceholder extends StatelessWidget {
-  const _ProfilePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: const Color(0xFF075E54),
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.person_rounded,
-              size: 100,
-              color: Color(0xFF075E54),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Profile Page',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Profile page coming soon...',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => AppRouter.goToEditProfile(context),
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit Profile'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF075E54),
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditProfilePlaceholder extends StatelessWidget {
-  const _EditProfilePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-        backgroundColor: const Color(0xFF075E54),
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.edit_rounded,
-              size: 100,
-              color: Color(0xFF075E54),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Edit Profile',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Edit profile page coming soon...',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ContactsPlaceholder extends StatelessWidget {
-  const _ContactsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contacts'),
-        backgroundColor: const Color(0xFF075E54),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            onPressed: () => AppRouter.goToAddContact(context),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.contacts_rounded,
-              size: 100,
-              color: Color(0xFF075E54),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Contacts',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Contacts page coming soon...',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => AppRouter.goToAddContact(context),
-        backgroundColor: const Color(0xFF25D366),
-        child: const Icon(Icons.person_add),
-      ),
-    );
-  }
-}
 
 class _AddContactPlaceholder extends StatelessWidget {
   const _AddContactPlaceholder();
@@ -435,7 +300,7 @@ class _AddContactPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Add contact page coming soon...',
+              'Add contact by email or phone number\n(Coming in Phase 3)',
               textAlign: TextAlign.center,
             ),
           ],
@@ -474,7 +339,7 @@ class _SettingsPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Settings page coming soon...',
+              'App settings and preferences\n(Coming in Phase 8)',
               textAlign: TextAlign.center,
             ),
           ],
@@ -513,14 +378,14 @@ class _ProfileSetupPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Profile setup page coming soon...',
+              'Complete your profile setup\n(Integrated into main profile page)',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () => AppRouter.goToHome(context),
               icon: const Icon(Icons.arrow_forward),
-              label: const Text('Skip for now'),
+              label: const Text('Go to Profile'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF075E54),
                 foregroundColor: Colors.white,
