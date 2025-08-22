@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/core/presentation/pages/contacts/contacts_page.dart
+// File: lib/core/presentation/contacts/contacts_page.dart (UPDATED NAVIGATION)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -11,6 +11,7 @@ import '../../providers/contact_provider.dart';
 import '../widgets/common/custom_button.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/common/loading_widget.dart';
+import '../widgets/common/page_wrapper.dart';
 
 class ContactsPage extends StatefulWidget {
   const ContactsPage({super.key});
@@ -47,110 +48,178 @@ class _ContactsPageState extends State<ContactsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: Consumer<ContactProvider>(
-        builder: (context, contactProvider, _) {
-          return CustomScrollView(
-            slivers: [
-              _buildSliverAppBar(contactProvider),
+    return Consumer<ContactProvider>(
+      builder: (context, contactProvider, _) {
+        return PageWrapper(
+          title: 'Contacts',
+          showBackButton: true, // This will show back button
+          backgroundColor: Colors.grey.shade50,
+          actions: [
+            // Search action
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: _showSearch,
+              tooltip: 'Search contacts',
+            ),
+            // More options
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: _handleMenuAction,
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'refresh',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh, size: 20),
+                      SizedBox(width: 8),
+                      Text('Refresh'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'invite',
+                  child: Row(
+                    children: [
+                      Icon(Icons.share, size: 20),
+                      SizedBox(width: 8),
+                      Text('Invite Friends'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'help',
+                  child: Row(
+                    children: [
+                      Icon(Icons.help_outline, size: 20),
+                      SizedBox(width: 8),
+                      Text('Help'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white.withOpacity(0.7),
+            onTap: (index) {
+              final views = [ContactsView.all, ContactsView.appUsers, ContactsView.device];
+              contactProvider.setContactsView(views[index]);
+            },
+            tabs: [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.people, size: 16),
+                    const SizedBox(width: 4),
+                    Text('All (${contactProvider.totalContactsCount})'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.chat, size: 16),
+                    const SizedBox(width: 4),
+                    Text('App (${contactProvider.appUsersCount})'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.phone, size: 16),
+                    const SizedBox(width: 4),
+                    Text('Device (${contactProvider.deviceContactsCount})'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: _buildFloatingActionButton(),
+          body: Column(
+            children: [
               _buildSearchBar(contactProvider),
               _buildContactStats(contactProvider),
-              _buildContactsList(contactProvider),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildContactsList(contactProvider),
+                    _buildContactsList(contactProvider),
+                    _buildContactsList(contactProvider),
+                  ],
+                ),
+              ),
             ],
-          );
-        },
-      ),
-      floatingActionButton: _buildFloatingActionButton(),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSliverAppBar(ContactProvider contactProvider) {
-    return SliverAppBar(
-      expandedHeight: 120,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryLight],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSizes.paddingM),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Contacts',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${contactProvider.totalContactsCount} contacts',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+  void _showSearch() {
+    showSearch(
+      context: context,
+      delegate: ContactSearchDelegate(),
+    );
+  }
+
+  void _handleMenuAction(String action) {
+    final contactProvider = context.read<ContactProvider>();
+
+    switch (action) {
+      case 'refresh':
+        contactProvider.refreshContacts();
+        _showSnackBar('Refreshing contacts...');
+        break;
+      case 'invite':
+        _showSnackBar('Invite friends feature coming soon!');
+        break;
+      case 'help':
+        _showHelpDialog();
+        break;
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
         ),
       ),
-      bottom: TabBar(
-        controller: _tabController,
-        indicatorColor: Colors.white,
-        indicatorWeight: 3,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white.withOpacity(0.7),
-        onTap: (index) {
-          final views = [ContactsView.all, ContactsView.appUsers, ContactsView.device];
-          contactProvider.setContactsView(views[index]);
-        },
-        tabs: [
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.people, size: 18),
-                const SizedBox(width: 6),
-                Text('All (${contactProvider.totalContactsCount})'),
-              ],
-            ),
-          ),
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.chat, size: 18),
-                const SizedBox(width: 6),
-                Text('App (${contactProvider.appUsersCount})'),
-              ],
-            ),
-          ),
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.phone, size: 18),
-                const SizedBox(width: 6),
-                Text('Device (${contactProvider.deviceContactsCount})'),
-              ],
-            ),
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Contacts Help'),
+        content: const Text(
+          'Here you can:\n\n'
+              '• View all your contacts\n'
+              '• Find friends using ChatZone\n'
+              '• Start new conversations\n'
+              '• Invite friends to join ChatZone',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
           ),
         ],
       ),
@@ -158,41 +227,39 @@ class _ContactsPageState extends State<ContactsPage>
   }
 
   Widget _buildSearchBar(ContactProvider contactProvider) {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.all(AppSizes.paddingM),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppSizes.radiusL),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: contactProvider.searchContacts,
-          decoration: InputDecoration(
-            hintText: 'Search contacts...',
-            hintStyle: TextStyle(color: Colors.grey.shade500),
-            prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
-            suffixIcon: contactProvider.searchQuery.isNotEmpty
-                ? IconButton(
-              icon: Icon(Icons.clear, color: Colors.grey.shade500),
-              onPressed: () {
-                _searchController.clear();
-                contactProvider.clearSearch();
-              },
-            )
-                : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSizes.paddingM,
-              vertical: 12,
-            ),
+    return Container(
+      margin: const EdgeInsets.all(AppSizes.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: contactProvider.searchContacts,
+        decoration: InputDecoration(
+          hintText: 'Search contacts...',
+          hintStyle: TextStyle(color: Colors.grey.shade500),
+          prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
+          suffixIcon: contactProvider.searchQuery.isNotEmpty
+              ? IconButton(
+            icon: Icon(Icons.clear, color: Colors.grey.shade500),
+            onPressed: () {
+              _searchController.clear();
+              contactProvider.clearSearch();
+            },
+          )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.paddingM,
+            vertical: 12,
           ),
         ),
       ),
@@ -200,44 +267,42 @@ class _ContactsPageState extends State<ContactsPage>
   }
 
   Widget _buildContactStats(ContactProvider contactProvider) {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: AppSizes.paddingM),
-        padding: const EdgeInsets.all(AppSizes.paddingM),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppSizes.radiusM),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildStatColumn(
-              icon: Icons.people,
-              label: 'Total',
-              value: contactProvider.totalContactsCount.toString(),
-              color: AppColors.primary,
-            ),
-            _buildStatColumn(
-              icon: Icons.chat_bubble,
-              label: 'App Users',
-              value: contactProvider.appUsersCount.toString(),
-              color: AppColors.accent,
-            ),
-            _buildStatColumn(
-              icon: Icons.phone,
-              label: 'Device',
-              value: contactProvider.deviceContactsCount.toString(),
-              color: Colors.orange,
-            ),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppSizes.paddingM),
+      padding: const EdgeInsets.all(AppSizes.paddingM),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatColumn(
+            icon: Icons.people,
+            label: 'Total',
+            value: contactProvider.totalContactsCount.toString(),
+            color: AppColors.primary,
+          ),
+          _buildStatColumn(
+            icon: Icons.chat_bubble,
+            label: 'App Users',
+            value: contactProvider.appUsersCount.toString(),
+            color: AppColors.accent,
+          ),
+          _buildStatColumn(
+            icon: Icons.phone,
+            label: 'Device',
+            value: contactProvider.deviceContactsCount.toString(),
+            color: Colors.orange,
+          ),
+        ],
       ),
     );
   }
@@ -282,41 +347,33 @@ class _ContactsPageState extends State<ContactsPage>
 
   Widget _buildContactsList(ContactProvider contactProvider) {
     if (contactProvider.isLoading && contactProvider.displayedContacts.isEmpty) {
-      return const SliverFillRemaining(
-        child: Center(
-          child: LoadingWidget(
-            type: LoadingType.pulse,
-            message: 'Loading contacts...',
-          ),
+      return const Center(
+        child: LoadingWidget(
+          type: LoadingType.pulse,
+          message: 'Loading contacts...',
         ),
       );
     }
 
     if (contactProvider.error != null) {
-      return SliverFillRemaining(
-        child: CustomErrorWidget(
-          message: contactProvider.error!,
-          onRetry: () {
-            if (!contactProvider.hasPermission) {
-              contactProvider.requestPermission();
-            } else {
-              contactProvider.refreshContacts();
-            }
-          },
-        ),
+      return CustomErrorWidget(
+        message: contactProvider.error!,
+        onRetry: () {
+          if (!contactProvider.hasPermission) {
+            contactProvider.requestPermission();
+          } else {
+            contactProvider.refreshContacts();
+          }
+        },
       );
     }
 
     if (!contactProvider.hasPermission) {
-      return SliverFillRemaining(
-        child: _buildPermissionRequest(contactProvider),
-      );
+      return _buildPermissionRequest(contactProvider);
     }
 
     if (contactProvider.displayedContacts.isEmpty) {
-      return SliverFillRemaining(
-        child: _buildEmptyState(contactProvider),
-      );
+      return _buildEmptyState(contactProvider);
     }
 
     return _buildGroupedContactsList(contactProvider);
@@ -446,40 +503,37 @@ class _ContactsPageState extends State<ContactsPage>
     final groupedContacts = contactProvider.groupedContacts;
     final sortedKeys = groupedContacts.keys.toList()..sort();
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-            (context, index) {
-          if (index >= sortedKeys.length) return null;
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 100),
+      itemCount: sortedKeys.length,
+      itemBuilder: (context, index) {
+        final letter = sortedKeys[index];
+        final contacts = groupedContacts[letter]!;
 
-          final letter = sortedKeys[index];
-          final contacts = groupedContacts[letter]!;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Section header
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.paddingM,
-                  vertical: AppSizes.paddingS,
-                ),
-                color: Colors.grey.shade100,
-                child: Text(
-                  letter,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.paddingM,
+                vertical: AppSizes.paddingS,
+              ),
+              color: Colors.grey.shade100,
+              child: Text(
+                letter,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
                 ),
               ),
-              // Contacts in this section
-              ...contacts.map((contact) => _buildContactTile(contact)),
-            ],
-          );
-        },
-        childCount: sortedKeys.length,
-      ),
+            ),
+            // Contacts in this section
+            ...contacts.map((contact) => _buildContactTile(contact)),
+          ],
+        );
+      },
     );
   }
 
@@ -560,15 +614,15 @@ class _ContactsPageState extends State<ContactsPage>
                     ),
                     const SizedBox(height: 4),
                   ],
-               if (contact.isOnline == true && contact.isAppUser)
-               Container(
-                 width: 8,
-                 height: 8,
-                 decoration: const BoxDecoration(
-                   color: AppColors.online,
-                   shape: BoxShape.circle,
+                  if (contact.isOnline == true && contact.isAppUser)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.online,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -635,13 +689,7 @@ class _ContactsPageState extends State<ContactsPage>
   Widget _buildFloatingActionButton() {
     return FloatingActionButton(
       onPressed: () {
-        // TODO: Navigate to add contact page
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Add contact feature coming soon!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        _showSnackBar('Add contact feature coming soon!');
       },
       backgroundColor: AppColors.accent,
       child: const Icon(Icons.person_add, color: Colors.white),
@@ -650,15 +698,8 @@ class _ContactsPageState extends State<ContactsPage>
 
   void _onContactTap(ContactModel contact) {
     if (contact.isAppUser) {
-      // TODO: Start chat with this user
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Starting chat with ${contact.displayName}...'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      _showSnackBar('Starting chat with ${contact.displayName}...');
     } else {
-      // Show contact details or invite to app
       _showContactOptions(contact);
     }
   }
@@ -678,7 +719,6 @@ class _ContactsPageState extends State<ContactsPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle bar
               Container(
                 width: 40,
                 height: 4,
@@ -688,7 +728,6 @@ class _ContactsPageState extends State<ContactsPage>
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // Contact info
               Padding(
                 padding: const EdgeInsets.all(AppSizes.paddingM),
                 child: Row(
@@ -721,13 +760,12 @@ class _ContactsPageState extends State<ContactsPage>
                 ),
               ),
               const Divider(height: 1),
-              // Actions
               _buildContactAction(
                 icon: Icons.message,
                 title: 'Send SMS',
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Open SMS app
+                  _showSnackBar('SMS feature coming soon!');
                 },
               ),
               _buildContactAction(
@@ -735,7 +773,7 @@ class _ContactsPageState extends State<ContactsPage>
                 title: 'Call',
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Make call
+                  _showSnackBar('Call feature coming soon!');
                 },
               ),
               _buildContactAction(
@@ -743,7 +781,7 @@ class _ContactsPageState extends State<ContactsPage>
                 title: 'Invite to ChatZone',
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Send app invite
+                  _showSnackBar('Invite feature coming soon!');
                 },
               ),
               const SizedBox(height: AppSizes.paddingS),
@@ -776,6 +814,117 @@ class _ContactsPageState extends State<ContactsPage>
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// SEARCH DELEGATE
+// ============================================================================
+
+class ContactSearchDelegate extends SearchDelegate<String> {
+  @override
+  String get searchFieldLabel => 'Search contacts...';
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+          showSuggestions(context);
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, ''),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return _buildSearchResults();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) {
+      return _buildSearchHints();
+    }
+    return _buildSearchResults();
+  }
+
+  Widget _buildSearchHints() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_rounded,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Search your contacts',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Type to start searching...',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.paddingL),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Search coming soon!',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Search functionality will be available in the next update.',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

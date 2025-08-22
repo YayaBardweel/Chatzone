@@ -13,6 +13,7 @@ import '../presentation/pages/onboarding/onboarding_page.dart';
 import '../presentation/pages/splash/splash_page.dart';
 import '../presentation/pages/home/home_page.dart';
 import '../presentation/profile/profile_page.dart';
+import '../presentation/contacts/add_contact_page.dart';
 
 class AppRouter {
   // Route paths
@@ -171,7 +172,7 @@ class AppRouter {
         name: 'addContact',
         builder: (context, state) {
           print('🚀 DEBUG: Navigating to Add Contact (placeholder)');
-          return const _AddContactPlaceholder();
+          return const AddContactPage();
         },
       ),
 
@@ -271,44 +272,7 @@ class AppRouter {
 // REMAINING PLACEHOLDER PAGES (TEMPORARY)
 // ============================================================================
 
-class _AddContactPlaceholder extends StatelessWidget {
-  const _AddContactPlaceholder();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Contact'),
-        backgroundColor: const Color(0xFF075E54),
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.person_add_rounded,
-              size: 100,
-              color: Color(0xFF075E54),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Add Contact',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Add contact by email or phone number\n(Coming in Phase 3)',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _SettingsPlaceholder extends StatelessWidget {
   const _SettingsPlaceholder();

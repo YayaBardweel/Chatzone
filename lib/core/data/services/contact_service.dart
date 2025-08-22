@@ -293,7 +293,7 @@ class ContactService {
       final emailQuery = await _firestore
           .collection(FirebaseConstants.usersCollection)
           .where(FirebaseConstants.email, isGreaterThanOrEqualTo: query.toLowerCase())
-          .where(FirebaseConstants.email, isLessThan: query.toLowerCase() + '\uf8ff')
+          .where(FirebaseConstants.email, isLessThan: '${query.toLowerCase()}\uf8ff')
           .get();
 
       final users = <ContactModel>[];

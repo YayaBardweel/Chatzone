@@ -4,14 +4,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import 'dart:async';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_sizes.dart';
 import '../../../routes/app_router.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
-import '../../widgets/common/loading_widget.dart';
 
 class EmailVerificationPage extends StatefulWidget {
   const EmailVerificationPage({super.key});
@@ -398,7 +396,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
         actions: [
           TextButton(
             onPressed: _signOut,
-            child: Text(
+            child: const Text(
               'Sign Out',
               style: TextStyle(
                 color: AppColors.primary,
@@ -531,7 +529,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage>
 
           GestureDetector(
             onTap: _changeEmail,
-            child: Text(
+            child: const Text(
               'Wrong email?',
               style: TextStyle(
                 fontSize: 14,

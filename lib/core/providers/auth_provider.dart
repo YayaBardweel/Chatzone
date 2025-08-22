@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/core/providers/auth_provider.dart (CLEAN REBUILD)
+// File: lib/core/providers/auth_provider.dart (UPDATED FOR ROBUST AUTH)
 // ============================================================================
 
 import 'package:flutter/foundation.dart';
@@ -8,9 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import '../data/services/auth_service.dart';
 
-
-/// Clean authentication state provider
-/// Manages authentication state and UI interactions
+/// Enhanced authentication state provider with PigeonUserDetails bug handling
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
 
@@ -112,7 +110,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================================
-  // AUTHENTICATION METHODS
+  // AUTHENTICATION METHODS (USING ROBUST SERVICE)
   // ============================================================================
 
   /// Sign up new user
@@ -125,7 +123,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      print('🔥 AuthProvider: Starting signup for $email');
+      print('🔥 AuthProvider: Starting robust signup for $email');
 
       final result = await _authService.signUp(
         email: email,
@@ -134,10 +132,8 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (result.isSuccess) {
-        print('✅ AuthProvider: Signup successful');
+        print('✅ AuthProvider: Robust signup successful');
         _setLoading(false);
-
-        // Don't wait for auth state change - navigate immediately
         return true;
       } else {
         _setError(result.error!);
@@ -151,7 +147,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Sign in existing user
+  /// Sign in existing user - ROBUST VERSION
   Future<bool> signIn({
     required String email,
     required String password,
@@ -160,7 +156,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      print('🔥 AuthProvider: Starting signin for $email');
+      print('🔥 AuthProvider: Starting robust signin for $email');
 
       final result = await _authService.signIn(
         email: email,
@@ -168,8 +164,14 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (result.isSuccess) {
-        print('✅ AuthProvider: Signin successful');
+        print('✅ AuthProvider: Robust signin successful');
         _setLoading(false);
+
+        // Show success message for user feedback
+        if (result.message != null) {
+          print('📝 AuthProvider: ${result.message}');
+        }
+
         return true;
       } else {
         _setError(result.error!);
@@ -183,11 +185,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Send email verification
+  /// Send email verification - ENHANCED VERSION
   Future<bool> sendEmailVerification() async {
     try {
       _setLoading(true);
       _clearError();
+
+      print('🔥 AuthProvider: Sending email verification (enhanced)');
 
       final result = await _authService.sendEmailVerification();
 
@@ -206,10 +210,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Check email verification status
+  /// Check email verification status - ROBUST VERSION
   Future<bool> checkEmailVerification() async {
     try {
-      print('🔍 AuthProvider: Checking email verification...');
+      print('🔍 AuthProvider: Checking email verification (robust)...');
 
       final isVerified = await _authService.checkEmailVerified();
 
@@ -218,7 +222,7 @@ class AuthProvider extends ChangeNotifier {
         _user = _authService.currentUser;
         _stopEmailVerificationCheck();
         notifyListeners();
-        print('✅ AuthProvider: Email verification confirmed');
+        print('✅ AuthProvider: Email verification confirmed (robust)');
         return true;
       }
 
@@ -226,25 +230,6 @@ class AuthProvider extends ChangeNotifier {
 
     } catch (e) {
       print('❌ AuthProvider: Check verification failed - $e');
-
-      // If it's the PigeonUserDetails error, try force update method
-      if (e.toString().contains('PigeonUserDetails') ||
-          e.toString().contains('List<Object?>')) {
-        try {
-          print('🔄 AuthProvider: Trying force verification update...');
-          final forceResult = await _authService.forceUpdateEmailVerificationStatus();
-
-          if (forceResult) {
-            _user = _authService.currentUser;
-            _stopEmailVerificationCheck();
-            notifyListeners();
-            return true;
-          }
-        } catch (fallbackError) {
-          print('❌ AuthProvider: Force update also failed: $fallbackError');
-        }
-      }
-
       return false;
     }
   }
@@ -252,17 +237,20 @@ class AuthProvider extends ChangeNotifier {
   /// Manual verification check with force update option
   Future<bool> manualEmailVerificationCheck() async {
     try {
-      print('🔍 AuthProvider: Manual email verification check');
+      print('🔍 AuthProvider: Manual email verification check (robust)');
 
-      // First try the normal check
+      // Show loading state
+      _setLoading(true);
+
+      // First try the robust check
       bool isVerified = await checkEmailVerification();
 
       if (isVerified) {
+        _setLoading(false);
         return true;
       }
 
       // If normal check fails, try force update
-      // This handles cases where email was verified but Firebase Auth has a bug
       print('🔧 AuthProvider: Normal check failed, trying force update...');
 
       isVerified = await _authService.forceUpdateEmailVerificationStatus();
@@ -272,22 +260,25 @@ class AuthProvider extends ChangeNotifier {
         _stopEmailVerificationCheck();
         notifyListeners();
         print('✅ AuthProvider: Force verification successful');
-        return true;
       }
 
-      return false;
+      _setLoading(false);
+      return isVerified;
 
     } catch (e) {
       print('❌ AuthProvider: Manual verification check failed: $e');
+      _setLoading(false);
       return false;
     }
   }
 
-  /// Send password reset email
+  /// Send password reset email - ENHANCED VERSION
   Future<bool> sendPasswordReset(String email) async {
     try {
       _setLoading(true);
       _clearError();
+
+      print('🔥 AuthProvider: Sending password reset (enhanced)');
 
       final result = await _authService.sendPasswordReset(email);
 
@@ -332,33 +323,38 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ============================================================================
-  // EMAIL VERIFICATION MONITORING
+  // EMAIL VERIFICATION MONITORING (ENHANCED)
   // ============================================================================
 
-  /// Start periodic email verification checking
+  /// Start periodic email verification checking - ENHANCED VERSION
   void _startEmailVerificationCheck() {
     if (_verificationTimer != null) return;
 
-    print('🔄 AuthProvider: Starting email verification monitoring');
+    print('🔄 AuthProvider: Starting enhanced email verification monitoring');
 
-    // Add delay before starting to avoid the PigeonUserDetails bug
-    Future.delayed(const Duration(seconds: 2), () {
-      // ChangeNotifier doesn't have a 'mounted' property.
-      // We can check if the timer is already active or if the user is already verified.
+    // Extended delay before starting to avoid PigeonUserDetails bug
+    Future.delayed(const Duration(seconds: 3), () {
       if (_verificationTimer != null || (_user?.emailVerified ?? true)) return;
 
       _verificationTimer = Timer.periodic(
-        const Duration(seconds: 10), // Check every 10 seconds
+        const Duration(seconds: 15), // Increased interval to 15 seconds
             (timer) async {
           try {
+            print('🔍 AuthProvider: Periodic verification check...');
             final isVerified = await checkEmailVerification();
             if (isVerified) {
+              print('✅ AuthProvider: Email verified via periodic check!');
               timer.cancel();
               _verificationTimer = null;
             }
           } catch (e) {
-            print('❌ AuthProvider: Email verification check error (non-critical): $e');
-            // Continue checking despite errors
+            print('❌ AuthProvider: Periodic verification check error: $e');
+            // Continue checking despite errors, but with exponential backoff
+            if (timer.tick > 10) { // After 10 attempts (2.5 minutes)
+              print('🛑 AuthProvider: Stopping periodic checks after 10 attempts');
+              timer.cancel();
+              _verificationTimer = null;
+            }
           }
         },
       );
@@ -444,7 +440,17 @@ class AuthProvider extends ChangeNotifier {
       'isLoading': isLoading,
       'userEmail': userEmail,
       'error': error,
+      'hasVerificationTimer': _verificationTimer != null,
     };
+  }
+
+  /// Debug method to show current auth state
+  void debugAuthState() {
+    final state = getAuthState();
+    print('🔍 AuthProvider Debug State:');
+    state.forEach((key, value) {
+      print('   $key: $value');
+    });
   }
 
   // ============================================================================

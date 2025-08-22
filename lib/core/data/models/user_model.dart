@@ -1,3 +1,7 @@
+// ============================================================================
+// File: lib/core/data/models/user_model.dart (FIXED)
+// ============================================================================
+
 import '../../constants/firebase_constants.dart';
 
 class UserModel {
@@ -5,7 +9,7 @@ class UserModel {
   final String email;
   final bool emailVerified;
   final String displayName;
-  final String photoUrl;
+  final String? photoUrl; // Changed to nullable
   final String status;
   final bool isOnline;
   final DateTime? lastSeen;
@@ -17,7 +21,7 @@ class UserModel {
     required this.email,
     required this.emailVerified,
     required this.displayName,
-    required this.photoUrl,
+    this.photoUrl, // Now nullable
     required this.status,
     required this.isOnline,
     this.lastSeen,
@@ -32,8 +36,8 @@ class UserModel {
       email: map[FirebaseConstants.email] ?? '',
       emailVerified: map[FirebaseConstants.emailVerified] ?? false,
       displayName: map[FirebaseConstants.displayName] ?? '',
-      photoUrl: map[FirebaseConstants.photoUrl] ??
-          FirebaseConstants.defaultProfileImage,
+      // FIXED: Handle null photoUrl properly
+      photoUrl: map[FirebaseConstants.photoUrl],
       status: map[FirebaseConstants.status] ?? FirebaseConstants.defaultStatus,
       isOnline: map[FirebaseConstants.isOnline] ?? false,
       lastSeen: map[FirebaseConstants.lastSeen]?.toDate(),
@@ -49,7 +53,7 @@ class UserModel {
       FirebaseConstants.email: email,
       FirebaseConstants.emailVerified: emailVerified,
       FirebaseConstants.displayName: displayName,
-      FirebaseConstants.photoUrl: photoUrl,
+      FirebaseConstants.photoUrl: photoUrl, // Can be null
       FirebaseConstants.status: status,
       FirebaseConstants.isOnline: isOnline,
       FirebaseConstants.lastSeen: lastSeen,

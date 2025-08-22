@@ -1,3 +1,7 @@
+// ============================================================================
+// File: lib/core/constants/firebase_constants.dart (FIXED)
+// ============================================================================
+
 class FirebaseConstants {
   // Collection Names
   static const String usersCollection = 'users';
@@ -60,7 +64,8 @@ class FirebaseConstants {
 
   // Default Values
   static const String defaultStatus = 'Hey there! I am using ChatZone.';
-  static const String defaultProfileImage = 'https://via.placeholder.com/150/075E54/FFFFFF?text=User';
+  // FIXED: Remove external placeholder URL - use null instead
+  static const String? defaultProfileImage = null;
 
   // Email Authentication
   static const int passwordMinLength = 6;

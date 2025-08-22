@@ -4,7 +4,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../../constants/firebase_constants.dart';
 import '../models/user_model.dart';
@@ -377,7 +376,7 @@ class UserRepository {
       email: firebaseUser.email ?? '',
       emailVerified: firebaseUser.emailVerified,
       displayName: displayName ?? firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'User',
-      photoUrl: firebaseUser.photoURL ?? FirebaseConstants.defaultProfileImage,
+      photoUrl: firebaseUser.photoURL ,
       status: FirebaseConstants.defaultStatus,
       isOnline: true,
       lastSeen: DateTime.now(),

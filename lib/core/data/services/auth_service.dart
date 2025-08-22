@@ -1,12 +1,11 @@
 // ============================================================================
-// File: lib/core/services/auth_service.dart (CLEAN REBUILD)
+// File: lib/core/data/services/auth_service.dart (ROBUST PIGEONUSERDETAILS FIX)
 // ============================================================================
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Simple, clean authentication service
-/// Handles only Firebase Auth operations - no state management
+/// Robust authentication service that handles PigeonUserDetails bug
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,10 +30,100 @@ class AuthService {
   bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
 
   // ============================================================================
-  // SIGN UP
+  // SIGN IN (ROBUST PIGEONUSERDETAILS HANDLING)
   // ============================================================================
 
-  /// Create new account with email and password
+  /// Sign in with email and password - ROBUST VERSION
+  Future<AuthResult> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      print('🔥 AuthService: Starting robust sign in for $email');
+
+      // Method 1: Try normal sign in first
+      try {
+        print('📝 Method 1: Attempting normal sign in...');
+
+        final userCredential = await _auth.signInWithEmailAndPassword(
+          email: email.trim().toLowerCase(),
+          password: password,
+        );
+
+        final user = userCredential.user!;
+        print('✅ Method 1: Normal sign in successful - ${user.uid}');
+
+        return AuthResult.success(user);
+
+      } catch (e) {
+        print('❌ Method 1: Normal sign in failed - $e');
+
+        // Check if it's the PigeonUserDetails error
+        if (e.toString().contains('PigeonUserDetails') ||
+            e.toString().contains('List<Object?>')) {
+          print('🔄 Detected PigeonUserDetails error, trying fallback methods...');
+
+          // Method 2: Wait and check if user was actually signed in
+          await Future.delayed(const Duration(milliseconds: 1500));
+
+          final currentUser = _auth.currentUser;
+          if (currentUser != null &&
+              currentUser.email?.toLowerCase() == email.toLowerCase()) {
+            print('✅ Method 2: User was signed in despite error!');
+            return AuthResult.success(currentUser);
+          }
+
+          // Method 3: Try sign in again with longer delay
+          print('🔄 Method 3: Retry sign in with delay...');
+          await Future.delayed(const Duration(milliseconds: 2000));
+
+          try {
+            final retryCredential = await _auth.signInWithEmailAndPassword(
+              email: email.trim().toLowerCase(),
+              password: password,
+            );
+
+            final retryUser = retryCredential.user!;
+            print('✅ Method 3: Retry sign in successful - ${retryUser.uid}');
+
+            return AuthResult.success(retryUser);
+
+          } catch (retryError) {
+            print('❌ Method 3: Retry failed - $retryError');
+
+            // Method 4: Final check for existing user
+            await Future.delayed(const Duration(milliseconds: 1000));
+            final finalUser = _auth.currentUser;
+
+            if (finalUser != null &&
+                finalUser.email?.toLowerCase() == email.toLowerCase()) {
+              print('✅ Method 4: Found existing signed in user!');
+              return AuthResult.success(finalUser);
+            }
+
+            // If all methods fail, return original error
+            throw e;
+          }
+        } else {
+          // Different error, rethrow
+          rethrow;
+        }
+      }
+
+    } on FirebaseAuthException catch (e) {
+      print('❌ AuthService: Firebase Auth failed - ${e.code}: ${e.message}');
+      return AuthResult.error(_getErrorMessage(e.code));
+    } catch (e) {
+      print('❌ AuthService: Sign in completely failed - $e');
+      return AuthResult.error('Sign in failed. Please try again.');
+    }
+  }
+
+  // ============================================================================
+  // SIGN UP (IMPROVED PIGEONUSERDETAILS HANDLING)
+  // ============================================================================
+
+  /// Create new account with email and password - IMPROVED VERSION
   Future<AuthResult> signUp({
     required String email,
     required String password,
@@ -45,17 +134,22 @@ class AuthService {
     try {
       print('🔥 AuthService: Creating account for $email');
 
-      // Step 1: Create account with retry mechanism for PigeonUserDetails bug
+      // Step 1: Create account with enhanced retry mechanism
       print('📝 Step 1: Creating Firebase Auth account...');
 
       UserCredential? userCredential;
       int retryCount = 0;
-      const maxRetries = 3;
+      const maxRetries = 4; // Increased retries
 
       while (userCredential == null && retryCount < maxRetries) {
         try {
           retryCount++;
           print('🔄 Attempt $retryCount/$maxRetries to create account...');
+
+          // Progressive delay between attempts
+          if (retryCount > 1) {
+            await Future.delayed(Duration(milliseconds: 1000 * retryCount));
+          }
 
           userCredential = await _auth.createUserWithEmailAndPassword(
             email: email.trim().toLowerCase(),
@@ -64,6 +158,7 @@ class AuthService {
 
           print('✅ Account creation successful on attempt $retryCount');
           break;
+
         } catch (e) {
           print('❌ Attempt $retryCount failed: $e');
 
@@ -71,22 +166,28 @@ class AuthService {
               e.toString().contains('List<Object?>')) {
             print('🔄 PigeonUserDetails error detected, retrying...');
 
-            // Wait before retry
-            await Future.delayed(Duration(milliseconds: 500 * retryCount));
+            // Extended wait for this specific error
+            await Future.delayed(Duration(milliseconds: 1500 * retryCount));
 
             // Check if user was actually created despite the error
-            await Future.delayed(const Duration(milliseconds: 500));
             final currentUser = _auth.currentUser;
-
             if (currentUser != null &&
                 currentUser.email?.toLowerCase() == email.toLowerCase()) {
               print('✅ User was created despite error! Using existing user.');
-              // Create a mock UserCredential since the real one failed
               createdUser = currentUser;
               break;
             }
 
             if (retryCount >= maxRetries) {
+              // Try one more check before giving up
+              await Future.delayed(const Duration(milliseconds: 2000));
+              final finalUser = _auth.currentUser;
+              if (finalUser != null &&
+                  finalUser.email?.toLowerCase() == email.toLowerCase()) {
+                print('✅ Found user on final check!');
+                createdUser = finalUser;
+                break;
+              }
               rethrow;
             }
           } else {
@@ -96,12 +197,12 @@ class AuthService {
         }
       }
 
-      // If we have a UserCredential, get the user from it
+      // Get user from credential or current user
       if (userCredential != null) {
         createdUser = userCredential.user!;
       }
 
-      // If we still don't have a user, check current user one more time
+      // Final fallback check
       createdUser ??= _auth.currentUser;
 
       if (createdUser == null) {
@@ -110,7 +211,7 @@ class AuthService {
 
       print('✅ Step 1: Account confirmed - ${createdUser.uid}');
 
-      // Step 2: Update display name if provided
+      // Step 2: Update display name with error handling
       if (displayName != null && displayName.isNotEmpty) {
         try {
           print('📝 Step 2: Updating display name...');
@@ -119,8 +220,6 @@ class AuthService {
         } catch (e) {
           print('⚠️ Step 2: Display name update failed (non-critical) - $e');
         }
-      } else {
-        print('⏭️ Step 2: Skipping display name update (not provided)');
       }
 
       // Step 3: Create user document in Firestore
@@ -129,17 +228,16 @@ class AuthService {
         await _createUserDocument(createdUser, displayName);
         print('✅ Step 3: Firestore document created');
       } catch (e) {
-        print(
-            '⚠️ Step 3: Firestore document creation failed (non-critical) - $e');
+        print('⚠️ Step 3: Firestore document creation failed (non-critical) - $e');
       }
 
-      // Step 4: Send email verification with delay
+      // Step 4: Send email verification with extended delay
       try {
         print('📝 Step 4: Sending email verification...');
-        // Longer delay to avoid the PigeonUserDetails bug
-        await Future.delayed(const Duration(milliseconds: 2000));
+        // Extended delay to avoid PigeonUserDetails bug
+        await Future.delayed(const Duration(milliseconds: 3000));
 
-        // Get fresh user reference
+        // Get fresh user reference and try verification
         final freshUser = _auth.currentUser;
         if (freshUser != null) {
           await freshUser.sendEmailVerification();
@@ -154,10 +252,11 @@ class AuthService {
 
       print('✅ AuthService: SignUp process completed successfully');
       return AuthResult.success(createdUser);
+
     } on FirebaseAuthException catch (e) {
       print('❌ AuthService: Firebase Auth failed - ${e.code}: ${e.message}');
 
-      // Special handling for email-already-in-use after PigeonUserDetails error
+      // Handle email-already-in-use after PigeonUserDetails error
       if (e.code == 'email-already-in-use') {
         print('🔍 Email already exists, checking if it was just created...');
         final currentUser = _auth.currentUser;
@@ -171,12 +270,10 @@ class AuthService {
       return AuthResult.error(_getErrorMessage(e.code));
     } catch (e) {
       print('❌ AuthService: SignUp failed - $e');
-      print('❌ AuthService: Error type: ${e.runtimeType}');
 
       // If user was created but something else failed, still return success
       if (createdUser != null) {
-        print(
-            '⚠️ AuthService: User was created despite error, returning success');
+        print('⚠️ AuthService: User was created despite error, returning success');
         return AuthResult.success(createdUser);
       }
 
@@ -193,40 +290,10 @@ class AuthService {
   }
 
   // ============================================================================
-  // SIGN IN
+  // EMAIL VERIFICATION (ENHANCED)
   // ============================================================================
 
-  /// Sign in with email and password
-  Future<AuthResult> signIn({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      print('🔥 AuthService: Signing in $email');
-
-      final userCredential = await _auth.signInWithEmailAndPassword(
-        email: email.trim().toLowerCase(),
-        password: password,
-      );
-
-      final user = userCredential.user!;
-      print('✅ AuthService: Signed in - ${user.uid}');
-
-      return AuthResult.success(user);
-    } on FirebaseAuthException catch (e) {
-      print('❌ AuthService: SignIn failed - ${e.code}');
-      return AuthResult.error(_getErrorMessage(e.code));
-    } catch (e) {
-      print('❌ AuthService: SignIn failed - $e');
-      return AuthResult.error('Sign in failed. Please try again.');
-    }
-  }
-
-  // ============================================================================
-  // EMAIL VERIFICATION
-  // ============================================================================
-
-  /// Send email verification to current user
+  /// Send email verification to current user - ENHANCED VERSION
   Future<AuthResult> sendEmailVerification() async {
     try {
       final user = _auth.currentUser;
@@ -238,17 +305,50 @@ class AuthService {
         return AuthResult.success(user, message: 'Email already verified');
       }
 
-      await user.sendEmailVerification();
-      print('✅ AuthService: Email verification sent');
+      // Enhanced retry mechanism for email verification
+      int attempts = 0;
+      const maxAttempts = 3;
 
-      return AuthResult.success(user, message: 'Verification email sent');
+      while (attempts < maxAttempts) {
+        try {
+          attempts++;
+          print('🔄 Email verification attempt $attempts/$maxAttempts');
+
+          // Progressive delay
+          if (attempts > 1) {
+            await Future.delayed(Duration(milliseconds: 2000 * attempts));
+          }
+
+          await user.sendEmailVerification();
+          print('✅ AuthService: Email verification sent on attempt $attempts');
+          return AuthResult.success(user, message: 'Verification email sent');
+
+        } catch (e) {
+          print('❌ Email verification attempt $attempts failed: $e');
+
+          if (e.toString().contains('PigeonUserDetails') ||
+              e.toString().contains('List<Object?>')) {
+            if (attempts < maxAttempts) {
+              print('🔄 PigeonUserDetails error, retrying...');
+              continue;
+            }
+          }
+
+          if (attempts >= maxAttempts) {
+            rethrow;
+          }
+        }
+      }
+
+      return AuthResult.error('Failed to send verification email after $maxAttempts attempts');
+
     } catch (e) {
       print('❌ AuthService: Send verification failed - $e');
       return AuthResult.error('Failed to send verification email');
     }
   }
 
-  /// Check if email is verified (refreshes from server)
+  /// Check if email is verified (ROBUST VERSION)
   Future<bool> checkEmailVerified() async {
     try {
       final user = _auth.currentUser;
@@ -259,126 +359,75 @@ class AuthService {
 
       print('🔍 AuthService: Current cached status: ${user.emailVerified}');
 
-      // Method 1: Try getting fresh ID token (this forces a refresh)
-      try {
-        print('🔄 AuthService: Method 1 - Refreshing ID token...');
-        await user.getIdToken(true); // Force refresh
+      // If already verified, return true
+      if (user.emailVerified) {
+        return true;
+      }
 
-        // Get the refreshed user
-        final refreshedUser = _auth.currentUser;
-        if (refreshedUser != null) {
-          final tokenRefreshResult = refreshedUser.emailVerified;
-          print('📧 AuthService: After token refresh = $tokenRefreshResult');
+      // Method 1: Try getting fresh ID token with retries
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          print('🔄 AuthService: Token refresh attempt $attempt/3...');
+          await user.getIdToken(true); // Force refresh
 
-          if (tokenRefreshResult) {
-            return true; // Email is verified!
+          // Get the refreshed user
+          final refreshedUser = _auth.currentUser;
+          if (refreshedUser != null && refreshedUser.emailVerified) {
+            print('📧 AuthService: Email verified after token refresh');
+            return true;
+          }
+
+          // Wait between attempts
+          if (attempt < 3) {
+            await Future.delayed(Duration(milliseconds: 1000 * attempt));
+          }
+
+        } catch (e) {
+          print('⚠️ AuthService: Token refresh attempt $attempt failed: $e');
+          if (attempt == 3) {
+            // Last attempt failed, continue to next method
           }
         }
-      } catch (e) {
-        print('⚠️ AuthService: Method 1 (token refresh) failed: $e');
       }
 
-      // Method 2: Try reload method (might fail with PigeonUserDetails)
-      try {
-        print('🔄 AuthService: Method 2 - Trying reload...');
-        await user.reload();
+      // Method 2: Try reload method with retries
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          print('🔄 AuthService: Reload attempt $attempt/3...');
+          await user.reload();
 
-        final reloadedUser = _auth.currentUser;
-        if (reloadedUser != null) {
-          final reloadResult = reloadedUser.emailVerified;
-          print('📧 AuthService: After reload = $reloadResult');
+          final reloadedUser = _auth.currentUser;
+          if (reloadedUser != null && reloadedUser.emailVerified) {
+            print('📧 AuthService: Email verified after reload');
+            return true;
+          }
 
-          if (reloadResult) {
-            return true; // Email is verified!
+          // Wait between attempts
+          if (attempt < 3) {
+            await Future.delayed(Duration(milliseconds: 1500 * attempt));
+          }
+
+        } catch (e) {
+          print('⚠️ AuthService: Reload attempt $attempt failed: $e');
+          if (e.toString().contains('PigeonUserDetails')) {
+            print('🔍 AuthService: PigeonUserDetails error in reload attempt $attempt');
           }
         }
-      } catch (e) {
-        print('⚠️ AuthService: Method 2 (reload) failed: $e');
-        if (e.toString().contains('PigeonUserDetails')) {
-          print('🔍 AuthService: PigeonUserDetails error detected in reload');
-        }
       }
 
-      // Method 3: Sign out and sign back in to force refresh (last resort)
-      try {
-        print(
-            '🔄 AuthService: Method 3 - Force refresh by re-authentication...');
-
-        // Get current user email before sign out
-        final currentEmail = user.email;
-        if (currentEmail != null) {
-          // Note: This method requires the user to be signed in again
-          // We'll implement this as a fallback for critical cases
-          print(
-              '📧 AuthService: Could try re-authentication for $currentEmail');
-        }
-      } catch (e) {
-        print('⚠️ AuthService: Method 3 failed: $e');
-      }
-
-      // Method 4: Check with Firestore (if we stored verification status there)
-      try {
-        print('🔄 AuthService: Method 4 - Checking Firestore...');
-        final userData = await getUserData(user.uid);
-        if (userData != null && userData['emailVerified'] == true) {
-          print('📧 AuthService: Firestore shows email verified = true');
-          return true;
-        }
-      } catch (e) {
-        print('⚠️ AuthService: Method 4 (Firestore check) failed: $e');
-      }
-
-      // If all methods fail, return the cached status
-      final cachedStatus = user.emailVerified;
-      print(
-          '📧 AuthService: All refresh methods failed, using cached: $cachedStatus');
+      // Return current cached status
+      final finalUser = _auth.currentUser;
+      final cachedStatus = finalUser?.emailVerified ?? false;
+      print('📧 AuthService: Using cached status: $cachedStatus');
       return cachedStatus;
+
     } catch (e) {
-      print('❌ AuthService: Check verification completely failed - $e');
+      print('❌ AuthService: Check verification failed - $e');
       return false;
     }
   }
 
-  // ============================================================================
-  // PASSWORD RESET
-  // ============================================================================
-
-  /// Send password reset email
-  Future<AuthResult> sendPasswordReset(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(
-        email: email.trim().toLowerCase(),
-      );
-
-      print('✅ AuthService: Password reset sent to $email');
-      return AuthResult.success(null, message: 'Password reset email sent');
-    } on FirebaseAuthException catch (e) {
-      print('❌ AuthService: Password reset failed - ${e.code}');
-      return AuthResult.error(_getErrorMessage(e.code));
-    } catch (e) {
-      print('❌ AuthService: Password reset failed - $e');
-      return AuthResult.error('Failed to send password reset email');
-    }
-  }
-
-  // ============================================================================
-  // SIGN OUT
-  // ============================================================================
-
-  /// Sign out current user
-  Future<AuthResult> signOut() async {
-    try {
-      await _auth.signOut();
-      print('✅ AuthService: Signed out');
-      return AuthResult.success(null, message: 'Signed out successfully');
-    } catch (e) {
-      print('❌ AuthService: Sign out failed - $e');
-      return AuthResult.error('Failed to sign out');
-    }
-  }
-
   /// Force update email verification status in Firestore
-  /// Call this when you know the email was verified but Firebase Auth is not updating
   Future<bool> forceUpdateEmailVerificationStatus() async {
     try {
       final user = _auth.currentUser;
@@ -397,13 +446,13 @@ class AuthService {
         print('⚠️ AuthService: Failed to update Firestore: $e');
       }
 
-      // Try multiple methods to refresh the user
-      for (int attempt = 1; attempt <= 3; attempt++) {
+      // Try multiple refresh methods with delays
+      for (int attempt = 1; attempt <= 5; attempt++) {
         try {
-          print('🔄 AuthService: Refresh attempt $attempt...');
+          print('🔄 AuthService: Force refresh attempt $attempt/5...');
 
-          // Wait a bit between attempts
-          await Future.delayed(Duration(milliseconds: 500 * attempt));
+          // Progressive delay
+          await Future.delayed(Duration(milliseconds: 1000 * attempt));
 
           // Try token refresh
           await user.getIdToken(true);
@@ -411,20 +460,18 @@ class AuthService {
           // Check if it worked
           final refreshedUser = _auth.currentUser;
           if (refreshedUser?.emailVerified == true) {
-            print(
-                '✅ AuthService: Email verification confirmed after attempt $attempt');
+            print('✅ AuthService: Email verification confirmed after attempt $attempt');
             return true;
           }
         } catch (e) {
-          print('⚠️ AuthService: Refresh attempt $attempt failed: $e');
+          print('⚠️ AuthService: Force refresh attempt $attempt failed: $e');
         }
       }
 
-      // If Firebase Auth refresh fails, we'll trust that the email was verified
-      // since the user clicked the verification link successfully
-      print(
-          '🔧 AuthService: Firebase Auth refresh failed, but email was verified in browser');
+      // If all refresh attempts fail, trust that email was verified
+      print('🔧 AuthService: Refresh failed, but email was verified in browser');
       return true;
+
     } catch (e) {
       print('❌ AuthService: Force update failed: $e');
       return false;
@@ -432,50 +479,70 @@ class AuthService {
   }
 
   // ============================================================================
-  // USER DATA METHODS
+  // PASSWORD RESET
   // ============================================================================
 
-  /// Get user data from Firestore safely
-  Future<Map<String, dynamic>?> getUserData(String uid) async {
+  /// Send password reset email
+  Future<AuthResult> sendPasswordReset(String email) async {
     try {
-      print('🔍 AuthService: Fetching user data for $uid');
+      // Retry mechanism for password reset
+      int attempts = 0;
+      const maxAttempts = 3;
 
-      final docSnapshot = await _firestore.collection('users').doc(uid).get();
+      while (attempts < maxAttempts) {
+        try {
+          attempts++;
+          print('🔄 Password reset attempt $attempts/$maxAttempts for $email');
 
-      print('🔍 AuthService: Document exists: ${docSnapshot.exists}');
+          if (attempts > 1) {
+            await Future.delayed(Duration(milliseconds: 1000 * attempts));
+          }
 
-      if (docSnapshot.exists) {
-        final data = docSnapshot.data();
-        print('🔍 AuthService: Document data type: ${data.runtimeType}');
-        print('🔍 AuthService: Document data: $data');
+          await _auth.sendPasswordResetEmail(
+            email: email.trim().toLowerCase(),
+          );
 
-        // Ensure we're returning a Map, not a List
-        if (data is Map<String, dynamic>) {
-          return data;
-        } else {
-          print('❌ AuthService: Unexpected data type: ${data.runtimeType}');
-          return null;
+          print('✅ AuthService: Password reset sent to $email');
+          return AuthResult.success(null, message: 'Password reset email sent');
+
+        } catch (e) {
+          print('❌ Password reset attempt $attempts failed: $e');
+
+          if (e.toString().contains('PigeonUserDetails') && attempts < maxAttempts) {
+            continue;
+          }
+
+          if (attempts >= maxAttempts) {
+            rethrow;
+          }
         }
-      } else {
-        print('❌ AuthService: User document does not exist');
-        return null;
       }
+
+      return AuthResult.error('Failed to send password reset email after $maxAttempts attempts');
+
+    } on FirebaseAuthException catch (e) {
+      print('❌ AuthService: Password reset failed - ${e.code}');
+      return AuthResult.error(_getErrorMessage(e.code));
     } catch (e) {
-      print('❌ AuthService: Failed to get user data - $e');
-      print('❌ AuthService: Error type: ${e.runtimeType}');
-      return null;
+      print('❌ AuthService: Password reset failed - $e');
+      return AuthResult.error('Failed to send password reset email');
     }
   }
 
-  /// Get current user's Firestore data
-  Future<Map<String, dynamic>?> getCurrentUserData() async {
-    final user = currentUser;
-    if (user == null) {
-      print('❌ AuthService: No current user for data fetch');
-      return null;
-    }
+  // ============================================================================
+  // SIGN OUT
+  // ============================================================================
 
-    return await getUserData(user.uid);
+  /// Sign out user
+  Future<AuthResult> signOut() async {
+    try {
+      await _auth.signOut();
+      print('✅ AuthService: Signed out');
+      return AuthResult.success(null, message: 'Signed out successfully');
+    } catch (e) {
+      print('❌ AuthService: Sign out failed - $e');
+      return AuthResult.error('Failed to sign out');
+    }
   }
 
   // ============================================================================
@@ -486,11 +553,6 @@ class AuthService {
   Future<void> _createUserDocument(User user, String? displayName) async {
     try {
       print('🔥 AuthService: Creating Firestore document for ${user.uid}');
-
-      // Debug: Check user object properties
-      print('🔍 AuthService: User email: ${user.email}');
-      print('🔍 AuthService: User displayName: ${user.displayName}');
-      print('🔍 AuthService: User emailVerified: ${user.emailVerified}');
 
       final userData = <String, dynamic>{
         'uid': user.uid,
@@ -506,21 +568,39 @@ class AuthService {
         'isOnline': true,
       };
 
-      print('🔍 AuthService: User data to save: $userData');
-
       // Use set with merge to avoid overwriting existing data
       await _firestore.collection('users').doc(user.uid).set(
-            userData,
-            SetOptions(merge: true),
-          );
+        userData,
+        SetOptions(merge: true),
+      );
 
       print('✅ AuthService: Firestore document created/updated successfully');
     } catch (e) {
       print('❌ AuthService: Failed to create user document - $e');
-      print('❌ AuthService: Error type: ${e.runtimeType}');
-      print('❌ AuthService: Error details: ${e.toString()}');
       // Don't throw - account creation was successful
     }
+  }
+
+  /// Get user data from Firestore safely
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
+    try {
+      final docSnapshot = await _firestore.collection('users').doc(uid).get();
+
+      if (docSnapshot.exists && docSnapshot.data() is Map<String, dynamic>) {
+        return docSnapshot.data() as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('❌ AuthService: Failed to get user data - $e');
+      return null;
+    }
+  }
+
+  /// Get current user's Firestore data
+  Future<Map<String, dynamic>?> getCurrentUserData() async {
+    final user = currentUser;
+    if (user == null) return null;
+    return await getUserData(user.uid);
   }
 
   /// Get user-friendly error messages
@@ -544,6 +624,8 @@ class AuthService {
         return 'Email/password accounts are not enabled.';
       case 'network-request-failed':
         return 'Network error. Please check your internet connection.';
+      case 'invalid-credential':
+        return 'Invalid email or password. Please check your credentials.';
       default:
         return 'Authentication failed. Please try again.';
     }

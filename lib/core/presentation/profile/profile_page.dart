@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/core/presentation/pages/profile/profile_page.dart
+// File: lib/core/presentation/profile/profile_page.dart (UPDATED NAVIGATION)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,7 @@ import '../../utils/validators.dart';
 import '../widgets/common/custom_button.dart';
 import '../widgets/common/custom_text_field.dart';
 import '../widgets/common/loading_widget.dart';
+import '../widgets/common/page_wrapper.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -84,22 +85,87 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: Consumer2<AuthProvider, UserProvider>(
-        builder: (context, authProvider, userProvider, _) {
-          if (userProvider.isLoading) {
-            return const Center(
+    return Consumer2<AuthProvider, UserProvider>(
+      builder: (context, authProvider, userProvider, _) {
+        if (userProvider.isLoading) {
+          return PageWrapper(
+            title: 'Profile',
+            showBackButton: true,
+            body: const Center(
               child: LoadingWidget(
                 type: LoadingType.pulse,
                 message: 'Updating profile...',
               ),
-            );
-          }
+            ),
+          );
+        }
 
-          return CustomScrollView(
+        return PageWrapper(
+          title: _isEditing ? 'Edit Profile' : 'Profile',
+          showBackButton: true,
+          backgroundColor: Colors.grey.shade50,
+          actions: [
+            if (!_isEditing)
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  setState(() {
+                    _isEditing = true;
+                  });
+                },
+                tooltip: 'Edit Profile',
+              ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: _handleMenuAction,
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: Row(
+                    children: [
+                      Icon(Icons.settings, size: 20),
+                      SizedBox(width: 8),
+                      Text('Settings'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'qr',
+                  child: Row(
+                    children: [
+                      Icon(Icons.qr_code, size: 20),
+                      SizedBox(width: 8),
+                      Text('QR Code'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'share',
+                  child: Row(
+                    children: [
+                      Icon(Icons.share, size: 20),
+                      SizedBox(width: 8),
+                      Text('Share Profile'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'help',
+                  child: Row(
+                    children: [
+                      Icon(Icons.help_outline, size: 20),
+                      SizedBox(width: 8),
+                      Text('Help'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          body: CustomScrollView(
             slivers: [
-              _buildSliverAppBar(userProvider),
+              _buildProfileHeader(userProvider),
               SliverToBoxAdapter(
                 child: AnimatedBuilder(
                   animation: _animationController,
@@ -115,73 +181,88 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               ),
             ],
-          );
-        },
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleMenuAction(String action) {
+    switch (action) {
+      case 'settings':
+        AppRouter.goToSettings(context);
+        break;
+      case 'qr':
+        _showComingSoon('QR Code');
+        break;
+      case 'share':
+        _showComingSoon('Share Profile');
+        break;
+      case 'help':
+        _showHelpDialog();
+        break;
+    }
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Profile Help'),
+        content: const Text(
+          'Here you can:\n\n'
+              '• Edit your display name and status\n'
+              '• Change your profile photo\n'
+              '• View account information\n'
+              '• Manage your privacy settings',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSliverAppBar(UserProvider userProvider) {
-    return SliverAppBar(
-      expandedHeight: 300,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      actions: [
-        if (!_isEditing)
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              setState(() {
-                _isEditing = true;
-              });
-            },
-            tooltip: 'Edit Profile',
+  Widget _buildProfileHeader(UserProvider userProvider) {
+    return SliverToBoxAdapter(
+      child: Container(
+        height: 280,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.primary, AppColors.primaryLight],
           ),
-        IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () => AppRouter.goToSettings(context),
-          tooltip: 'Settings',
         ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryLight],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 60), // Space for app bar
-                _buildProfilePhoto(userProvider),
-                const SizedBox(height: 16),
-                Text(
-                  userProvider.displayName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+              _buildProfilePhoto(userProvider),
+              const SizedBox(height: 16),
+              Text(
+                userProvider.displayName,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  userProvider.userEmail ?? '',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                userProvider.userEmail ?? '',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.9),
                 ),
-                const SizedBox(height: 8),
-                _buildOnlineStatus(userProvider),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              _buildOnlineStatus(userProvider),
+            ],
           ),
         ),
       ),
@@ -506,7 +587,6 @@ class _ProfilePageState extends State<ProfilePage>
                 title: 'QR Code',
                 subtitle: 'Share your profile',
                 onTap: () {
-                  // TODO: Show QR code
                   _showComingSoon('QR Code');
                 },
               ),
@@ -518,7 +598,6 @@ class _ProfilePageState extends State<ProfilePage>
                 title: 'Invite Friends',
                 subtitle: 'Share ChatZone',
                 onTap: () {
-                  // TODO: Share app
                   _showComingSoon('Invite Friends');
                 },
               ),
@@ -779,6 +858,10 @@ class _ProfilePageState extends State<ProfilePage>
       SnackBar(
         content: Text('$feature feature coming soon!'),
         backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        ),
       ),
     );
   }

@@ -1,5 +1,5 @@
 // ============================================================================
-// File: lib/core/presentation/pages/home/home_page.dart (MODERN REBUILD)
+// File: lib/core/presentation/pages/home/home_page.dart (FINAL - WITH FIXED FAB)
 // ============================================================================
 
 import 'package:flutter/material.dart';
@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this); // Only 2 tabs now
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabChange);
 
     WidgetsBinding.instance.addObserver(this);
@@ -176,7 +176,7 @@ class _HomePageState extends State<HomePage>
   }
 
   // ============================================================================
-  // BUILD METHODS
+  // BUILD METHODS - FIXED LAYOUT
   // ============================================================================
 
   @override
@@ -185,21 +185,24 @@ class _HomePageState extends State<HomePage>
       builder: (context, authProvider, userProvider, _) {
         return Scaffold(
           backgroundColor: Colors.grey.shade50,
-          body: CustomScrollView(
-            slivers: [
-              _buildSliverAppBar(userProvider),
-              SliverFillRemaining(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: const [
-                    ChatsTab(),
-                    CallsTab(),
-                  ],
-                ),
-              ),
-            ],
+          // FIXED: Use NestedScrollView for better FAB compatibility
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                _buildSliverAppBar(userProvider),
+              ];
+            },
+            body: TabBarView(
+              controller: _tabController,
+              children: const [
+                ChatsTab(),
+                CallsTab(),
+              ],
+            ),
           ),
+          // FIXED: Add FAB at Scaffold level with proper location
           floatingActionButton: _buildFloatingActionButton(),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );
@@ -213,6 +216,7 @@ class _HomePageState extends State<HomePage>
       elevation: 0,
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
+      automaticallyImplyLeading: true,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: const BoxDecoration(
@@ -233,8 +237,6 @@ class _HomePageState extends State<HomePage>
                 children: [
                   const SizedBox(height: 10),
                   _buildUserHeader(userProvider),
-                  const SizedBox(height: 20),
-                  _buildQuickActions(),
                 ],
               ),
             ),
@@ -269,6 +271,7 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+
   Widget _buildUserHeader(UserProvider userProvider) {
     return Row(
       children: [
@@ -302,15 +305,15 @@ class _HomePageState extends State<HomePage>
                     : null,
                 child: userProvider.photoUrl == null
                     ? Text(
-                        userProvider.displayName.isNotEmpty
-                            ? userProvider.displayName[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                        ),
-                      )
+                  userProvider.displayName.isNotEmpty
+                      ? userProvider.displayName[0].toUpperCase()
+                      : 'U',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                  ),
+                )
                     : null,
               ),
             ),
@@ -362,44 +365,126 @@ class _HomePageState extends State<HomePage>
           ),
         ),
 
-        // Settings button
+        // Search button
         IconButton(
-          onPressed: _showSettings,
+          onPressed: _showSearchPage,
+          icon: const Icon(
+            Icons.search,
+            color: Colors.white,
+            size: 24,
+          ),
+          tooltip: 'Search',
+        ),
+
+        // Menu button
+        PopupMenuButton<String>(
           icon: const Icon(
             Icons.more_vert,
             color: Colors.white,
             size: 24,
           ),
-          tooltip: 'Settings',
+          onSelected: _handleMenuAction,
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'profile',
+              child: Row(
+                children: [
+                  Icon(Icons.person, size: 20),
+                  SizedBox(width: 8),
+                  Text('Profile'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'contacts',
+              child: Row(
+                children: [
+                  Icon(Icons.contacts, size: 20),
+                  SizedBox(width: 8),
+                  Text('Contacts'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'settings',
+              child: Row(
+                children: [
+                  Icon(Icons.settings, size: 20),
+                  SizedBox(width: 8),
+                  Text('Settings'),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'help',
+              child: Row(
+                children: [
+                  Icon(Icons.help_outline, size: 20),
+                  SizedBox(width: 8),
+                  Text('Help'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'signout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, size: 20, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Sign Out', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildQuickActions() {
-    return Row(
-      children: [
-        _buildQuickActionButton(
-          icon: Icons.search_rounded,
-          label: 'Search',
-          onTap: _showSearchPage,
+  void _handleMenuAction(String action) {
+    switch (action) {
+      case 'profile':
+        _showProfile();
+        break;
+      case 'contacts':
+        _showContacts();
+        break;
+      case 'settings':
+        _showSettings();
+        break;
+      case 'help':
+        _showHelpDialog();
+        break;
+      case 'signout':
+        _signOut();
+        break;
+    }
+  }
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Help & Support'),
+        content: const Text(
+          'Welcome to ChatZone!\n\n'
+              'Features:\n'
+              '• Send messages to friends\n'
+              '• Make voice and video calls\n'
+              '• Share photos and files\n'
+              '• Create group chats\n\n'
+              'For support, contact us at support@chatzone.com',
         ),
-        const SizedBox(width: 12),
-        _buildQuickActionButton(
-          icon: Icons.contacts_rounded,
-          label: 'Contacts',
-          onTap: _showContacts,
-        ),
-        const Spacer(),
-        _buildQuickActionButton(
-          icon: Icons.logout_rounded,
-          label: 'Sign Out',
-          onTap: _signOut,
-          isDestructive: true,
-        ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
     );
   }
+
 
   Widget _buildQuickActionButton({
     required IconData icon,
@@ -448,6 +533,7 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  // FIXED: Enhanced FAB with better visibility
   Widget _buildFloatingActionButton() {
     IconData icon;
     String tooltip;
@@ -471,8 +557,8 @@ class _HomePageState extends State<HomePage>
       backgroundColor: AppColors.accent,
       foregroundColor: Colors.white,
       tooltip: tooltip,
-      elevation: 6,
-      child: Icon(icon, size: 26),
+      elevation: 8, // Increased elevation for better visibility
+      child: Icon(icon, size: 28), // Slightly larger icon
     );
   }
 
@@ -556,7 +642,12 @@ class _HomePageState extends State<HomePage>
               subtitle: 'Create a group chat',
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Show create group
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Group chat feature coming soon!'),
+                    backgroundColor: AppColors.primary,
+                  ),
+                );
               },
             ),
 

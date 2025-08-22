@@ -11,7 +11,6 @@ import '../../../providers/user_provider.dart';
 import '../../../routes/app_router.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/loading_widget.dart';
-import '../../widgets/common/error_widget.dart';
 
 class ChatsTab extends StatefulWidget {
   const ChatsTab({super.key});
